@@ -1,30 +1,3 @@
 [toolchain]
-channel = "1.70.0" # MSRV
+channel = "1.92.0" # Latest stable
 components = ["rustfmt", "clippy", "rust-src"]
-
-# The profile section is used to specify default profile settings
-# for this toolchain. These settings will be applied when this
-# toolchain is selected.
-[profile]
-# Override default settings for the `dev` profile
-# This profile is used for development builds
-dev = {
-  # Additional compiler flags for dev builds
-  # These are added to the default flags
-  # Example: "-C", "target-cpu=native"
-}
-
-# Override default settings for the `release` profile
-# This profile is used for release builds
-release = {
-  # Additional compiler flags for release builds
-  # These are added to the default flags
-  # Example: "-C", "target-cpu=native", "-C", "lto=fat"
-}
-
-# Override default settings for the `test` profile
-# This profile is used for test builds
-test = {
-  # Additional compiler flags for test builds
-  # These are added to the default flags
-}
