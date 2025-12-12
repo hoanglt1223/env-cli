@@ -3,20 +3,20 @@
 //! This module provides comprehensive shell completion support for env-cli,
 //! including bash, zsh, fish, and PowerShell completion scripts.
 
-use crate::cli::{Cli, Commands, OutputFormat};
+use crate::cli::Cli;
 use crate::error::Result;
-use clap::CommandFactory;
+use clap::Parser;
 use std::fmt::Write;
 
 /// Shell completion generator.
 pub struct CompletionGenerator {
-    cli: Cli,
+    _cli: Cli,
 }
 
 impl CompletionGenerator {
     /// Create a new completion generator.
     pub fn new() -> Self {
-        Self { cli: Cli::parse() }
+        Self { _cli: Cli::parse() }
     }
 
     /// Generate completion script for the specified shell.
@@ -56,7 +56,10 @@ impl CompletionGenerator {
         writeln!(script, "        switch)")?;
         writeln!(script, "            local environments")?;
         writeln!(script, "            environments=$({{command:-env}} status 2>/dev/null | grep -E \"^\\*?\\s+\\w+\" | cut -d' ' -f2 | grep -v \"^$\")")?;
-        writeln!(script, "            COMPREPLY=($(compgen -W \"$environments\" -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "            COMPREPLY=($(compgen -W \"$environments\" -- \"$cur\"))"
+        )?;
         writeln!(script, "            return")?;
         writeln!(script, "            ;;")?;
         writeln!(script)?;
@@ -72,21 +75,30 @@ impl CompletionGenerator {
         writeln!(script, "        sync)")?;
         writeln!(script, "            local environments")?;
         writeln!(script, "            environments=$({{command:-env}} status 2>/dev/null | grep -E \"^\\*?\\s+\\w+\" | cut -d' ' -f2 | grep -v \"^$\")")?;
-        writeln!(script, "            COMPREPLY=($(compgen -W \"$environments\" -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "            COMPREPLY=($(compgen -W \"$environments\" -- \"$cur\"))"
+        )?;
         writeln!(script, "            return")?;
         writeln!(script, "            ;;")?;
         writeln!(script)?;
 
         // Scan command options
         writeln!(script, "        scan)")?;
-        writeln!(script, "            COMPREPLY=($(compgen -A directory -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "            COMPREPLY=($(compgen -A directory -- \"$cur\"))"
+        )?;
         writeln!(script, "            return")?;
         writeln!(script, "            ;;")?;
         writeln!(script)?;
 
         // Generate command options
         writeln!(script, "        generate)")?;
-        writeln!(script, "            COMPREPLY=($(compgen -A file -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "            COMPREPLY=($(compgen -A file -- \"$cur\"))"
+        )?;
         writeln!(script, "            return")?;
         writeln!(script, "            ;;")?;
         writeln!(script)?;
@@ -95,25 +107,43 @@ impl CompletionGenerator {
         writeln!(script, "        -*)")?;
         writeln!(script, "            case ${{words[1]}} in")?;
         writeln!(script, "                switch)")?;
-        writeln!(script, "                    COMPREPLY=($(compgen -W '--yes' -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "                    COMPREPLY=($(compgen -W '--yes' -- \"$cur\"))"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "                scan)")?;
-        writeln!(script, "                    COMPREPLY=($(compgen -W '--format --hidden' -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "                    COMPREPLY=($(compgen -W '--format --hidden' -- \"$cur\"))"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "                validate)")?;
-        writeln!(script, "                    COMPREPLY=($(compgen -W '--env --check-unused' -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "                    COMPREPLY=($(compgen -W '--env --check-unused' -- \"$cur\"))"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "                sync)")?;
-        writeln!(script, "                    COMPREPLY=($(compgen -W '--yes' -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "                    COMPREPLY=($(compgen -W '--yes' -- \"$cur\"))"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "                generate)")?;
         writeln!(script, "                    COMPREPLY=($(compgen -W '--output --comments --docs --scan-dir' -- \"$cur\"))")?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "                status)")?;
-        writeln!(script, "                    COMPREPLY=($(compgen -W '--verbose' -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "                    COMPREPLY=($(compgen -W '--verbose' -- \"$cur\"))"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "                *)")?;
-        writeln!(script, "                    COMPREPLY=($(compgen -W '--help' -- \"$cur\"))")?;
+        writeln!(
+            script,
+            "                    COMPREPLY=($(compgen -W '--help' -- \"$cur\"))"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script, "            esac")?;
         writeln!(script, "            return")?;
@@ -150,10 +180,16 @@ impl CompletionGenerator {
 
         // Define commands
         writeln!(script, "    commands=(")?;
-        writeln!(script, "        'init:Initialize project with env structure'")?;
+        writeln!(
+            script,
+            "        'init:Initialize project with env structure'"
+        )?;
         writeln!(script, "        'switch:Switch between environments'")?;
         writeln!(script, "        'scan:Scan code for env usage'")?;
-        writeln!(script, "        'validate:Validate environment configuration'")?;
+        writeln!(
+            script,
+            "        'validate:Validate environment configuration'"
+        )?;
         writeln!(script, "        'sync:Sync environments safely'")?;
         writeln!(script, "        'generate:Generate .env.example file'")?;
         writeln!(script, "        'status:Show current environment status'")?;
@@ -180,7 +216,10 @@ impl CompletionGenerator {
         writeln!(script, "                init)")?;
         writeln!(script, "                    _arguments \\")?;
         writeln!(script, "                        '--force[Force initialization even if already initialized]' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
@@ -190,8 +229,14 @@ impl CompletionGenerator {
         writeln!(script, "                    environments=($({{command:-env}} status 2>/dev/null | grep -E \"^\\*?\\s+\\w+\" | cut -d' ' -f2 | grep -v \"^$\"))")?;
         writeln!(script, "                    _arguments \\")?;
         writeln!(script, "                        '1: :($environments)' \\")?;
-        writeln!(script, "                        '--yes[Skip confirmation before switching]' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '--yes[Skip confirmation before switching]' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
@@ -199,9 +244,18 @@ impl CompletionGenerator {
         writeln!(script, "                scan)")?;
         writeln!(script, "                    _arguments \\")?;
         writeln!(script, "                        '1: :_directories' \\")?;
-        writeln!(script, "                        '--format[Output format]:format:(text json yaml)' \\")?;
-        writeln!(script, "                        '--hidden[Include hidden files and directories]' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '--format[Output format]:format:(text json yaml)' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--hidden[Include hidden files and directories]' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
@@ -211,8 +265,14 @@ impl CompletionGenerator {
         writeln!(script, "                    environments=($({{command:-env}} status 2>/dev/null | grep -E \"^\\*?\\s+\\w+\" | cut -d' ' -f2 | grep -v \"^$\"))")?;
         writeln!(script, "                    _arguments \\")?;
         writeln!(script, "                        '--env[Environment to validate]:environment:(current $environments)' \\")?;
-        writeln!(script, "                        '--check-unused[Check for unused environment variables]' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '--check-unused[Check for unused environment variables]' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
@@ -221,29 +281,59 @@ impl CompletionGenerator {
         writeln!(script, "                    local environments")?;
         writeln!(script, "                    environments=($({{command:-env}} status 2>/dev/null | grep -E \"^\\*?\\s+\\w+\" | cut -d' ' -f2 | grep -v \"^$\"))")?;
         writeln!(script, "                    _arguments \\")?;
-        writeln!(script, "                        '1:source: :($environments)' \\")?;
-        writeln!(script, "                        '2:target: :($environments)' \\")?;
-        writeln!(script, "                        '--yes[Skip confirmation before syncing]' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '1:source: :($environments)' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '2:target: :($environments)' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--yes[Skip confirmation before syncing]' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
         // Generate command
         writeln!(script, "                generate)")?;
         writeln!(script, "                    _arguments \\")?;
-        writeln!(script, "                        '--output[Output file path]:file:_files' \\")?;
-        writeln!(script, "                        '--comments[Include comments describing each variable]' \\")?;
-        writeln!(script, "                        '--docs[Generate comprehensive documentation]' \\")?;
+        writeln!(
+            script,
+            "                        '--output[Output file path]:file:_files' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--comments[Include comments describing each variable]' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--docs[Generate comprehensive documentation]' \\"
+        )?;
         writeln!(script, "                        '--scan-dir[Directory to scan for environment variables]:directory:_directories' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
         // Status command
         writeln!(script, "                status)")?;
         writeln!(script, "                    _arguments \\")?;
-        writeln!(script, "                        '--verbose[Show detailed information]' \\")?;
-        writeln!(script, "                        '--help[Show help message]'")?;
+        writeln!(
+            script,
+            "                        '--verbose[Show detailed information]' \\"
+        )?;
+        writeln!(
+            script,
+            "                        '--help[Show help message]'"
+        )?;
         writeln!(script, "                    ;;")?;
         writeln!(script)?;
 
@@ -278,9 +368,15 @@ impl CompletionGenerator {
         writeln!(script, "# Main commands")?;
         writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a init -d 'Initialize project with env structure'")?;
         writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a switch -d 'Switch between environments'")?;
-        writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a scan -d 'Scan code for env usage'")?;
+        writeln!(
+            script,
+            "complete -c env -n \"__fish_use_subcommand\" -a scan -d 'Scan code for env usage'"
+        )?;
         writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a validate -d 'Validate environment configuration'")?;
-        writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a sync -d 'Sync environments safely'")?;
+        writeln!(
+            script,
+            "complete -c env -n \"__fish_use_subcommand\" -a sync -d 'Sync environments safely'"
+        )?;
         writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a generate -d 'Generate .env.example file'")?;
         writeln!(script, "complete -c env -n \"__fish_use_subcommand\" -a status -d 'Show current environment status'")?;
         writeln!(script)?;
@@ -346,16 +442,28 @@ impl CompletionGenerator {
         writeln!(script)?;
 
         // Script to register completion
-        writeln!(script, "Register-ArgumentCompleter -Native -CommandName env -ScriptBlock {{")?;
-        writeln!(script, "    param($wordToComplete, $commandAst, $cursorPosition)")?;
+        writeln!(
+            script,
+            "Register-ArgumentCompleter -Native -CommandName env -ScriptBlock {{"
+        )?;
+        writeln!(
+            script,
+            "    param($wordToComplete, $commandAst, $cursorPosition)"
+        )?;
         writeln!(script)?;
 
         writeln!(script, "    # Get current command")?;
-        writeln!(script, "    $command = $commandAst.CommandElements[0].Extent.Text")?;
+        writeln!(
+            script,
+            "    $command = $commandAst.CommandElements[0].Extent.Text"
+        )?;
         writeln!(script)?;
 
         writeln!(script, "    # Get subcommand if exists")?;
-        writeln!(script, "    $subcommand = if ($commandAst.CommandElements.Count -gt 1) {{")?;
+        writeln!(
+            script,
+            "    $subcommand = if ($commandAst.CommandElements.Count -gt 1) {{"
+        )?;
         writeln!(script, "        $commandAst.CommandElements[1].Extent.Text")?;
         writeln!(script, "    }} else {{")?;
         writeln!(script, "        ''")?;
@@ -391,18 +499,27 @@ impl CompletionGenerator {
         writeln!(script)?;
 
         writeln!(script, "        '^validate$' {{")?;
-        writeln!(script, "            if ($wordToComplete -match '--env=') {{")?;
+        writeln!(
+            script,
+            "            if ($wordToComplete -match '--env=') {{"
+        )?;
         writeln!(script, "                # Environment names for validate")?;
         writeln!(script, "                $envs | ForEach-Object {{")?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new(\"--env=$_\", \"--env=$_\", 'ParameterValue', 'Environment name')")?;
         writeln!(script, "                }}")?;
-        writeln!(script, "            }} elseif ($wordToComplete -match '^--') {{")?;
+        writeln!(
+            script,
+            "            }} elseif ($wordToComplete -match '^--') {{"
+        )?;
         writeln!(script, "                # Options")?;
         writeln!(script, "                @('--env', '--check-unused', '--help') | Where-Object {{ $_ -like \"$wordToComplete*\" }} | ForEach-Object {{")?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }} else {{")?;
-        writeln!(script, "                @('--env', '--check-unused', '--help') | ForEach-Object {{")?;
+        writeln!(
+            script,
+            "                @('--env', '--check-unused', '--help') | ForEach-Object {{"
+        )?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }}")?;
@@ -414,7 +531,7 @@ impl CompletionGenerator {
         writeln!(script, "            $envs | ForEach-Object {{")?;
         writeln!(script, "                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', 'Environment name')")?;
         writeln!(script, "            }}")?;
-        writeln!(script)？;
+        writeln!(script)?;
 
         writeln!(script, "            if ($wordToComplete -match '^--') {{")?;
         writeln!(script, "                # Options")?;
@@ -422,7 +539,10 @@ impl CompletionGenerator {
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }} else {{")?;
-        writeln!(script, "                @('--yes', '--help') | ForEach-Object {{")?;
+        writeln!(
+            script,
+            "                @('--yes', '--help') | ForEach-Object {{"
+        )?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }}")?;
@@ -436,7 +556,10 @@ impl CompletionGenerator {
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }} else {{")?;
-        writeln!(script, "                @('--format', '--hidden', '--help') | ForEach-Object {{")?;
+        writeln!(
+            script,
+            "                @('--format', '--hidden', '--help') | ForEach-Object {{"
+        )?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }}")?;
@@ -464,7 +587,10 @@ impl CompletionGenerator {
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }} else {{")?;
-        writeln!(script, "                @('--verbose', '--help') | ForEach-Object {{")?;
+        writeln!(
+            script,
+            "                @('--verbose', '--help') | ForEach-Object {{"
+        )?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }}")?;
@@ -477,10 +603,13 @@ impl CompletionGenerator {
         writeln!(script, "                @('--force', '--help') | Where-Object {{ $_ -like \"$wordToComplete*\" }} | ForEach-Object {{")?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
-        writeln!(script)？;
+        writeln!(script)?;
 
         writeln!(script, "            }} else {{")?;
-        writeln!(script, "                @('--force', '--help') | ForEach-Object {{")?;
+        writeln!(
+            script,
+            "                @('--force', '--help') | ForEach-Object {{"
+        )?;
         writeln!(script, "                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)")?;
         writeln!(script, "                }}")?;
         writeln!(script, "            }}")?;
@@ -504,7 +633,7 @@ impl CompletionGenerator {
 }
 
 /// Supported shell types.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Shell {
     Bash,
     Zsh,
@@ -555,7 +684,11 @@ pub fn install_completion(shell: Shell) -> Result<()> {
     // Write completion script
     std::fs::write(&completion_file, script)?;
 
-    println!("✅ Completion installed for {} at: {}", shell, completion_file.display());
+    println!(
+        "✅ Completion installed for {} at: {}",
+        shell,
+        completion_file.display()
+    );
 
     // Show installation instructions
     show_completion_instructions(shell, &completion_file)?;
@@ -570,12 +703,20 @@ pub fn uninstall_completion(shell: Shell) -> Result<()> {
 
     if completion_file.exists() {
         std::fs::remove_file(&completion_file)?;
-        println!("✅ Completion uninstalled for {} from: {}", shell, completion_file.display());
+        println!(
+            "✅ Completion uninstalled for {} from: {}",
+            shell,
+            completion_file.display()
+        );
 
         // Show uninstallation instructions
         show_uninstallation_instructions(shell)?;
     } else {
-        println!("ℹ️  No completion found for {} at: {}", shell, completion_file.display());
+        println!(
+            "ℹ️  No completion found for {} at: {}",
+            shell,
+            completion_file.display()
+        );
     }
 
     Ok(())
@@ -608,21 +749,21 @@ fn get_completion_dir(shell: Shell) -> Result<std::path::PathBuf> {
                 home_dir.join(".local/share/zsh/site-functions"),
             ];
 
-            zsh_dirs.iter()
+            zsh_dirs
+                .iter()
                 .find(|dir| dir.exists() || dir.parent().map_or(false, |p| p.exists()))
                 .cloned()
                 .unwrap_or_else(|| home_dir.join(".zsh/completions"))
         }
-        Shell::Fish => {
-            home_dir.join(".config/fish/completions")
-        }
+        Shell::Fish => home_dir.join(".config/fish/completions"),
         Shell::PowerShell => {
             let powershell_dirs = [
                 home_dir.join(".local/share/powershell/Modules"),
                 std::path::PathBuf::from("/usr/local/share/powershell/Modules"),
             ];
 
-            powershell_dirs.iter()
+            powershell_dirs
+                .iter()
                 .find(|dir| dir.exists())
                 .cloned()
                 .unwrap_or_else(|| home_dir.join(".local/share/powershell/Modules"))
@@ -633,7 +774,7 @@ fn get_completion_dir(shell: Shell) -> Result<std::path::PathBuf> {
 }
 
 /// Show installation instructions for the specified shell.
-fn show_completion_instructions(shell: Shell, completion_file: &std::path::Path) -> Result<()> {
+fn show_completion_instructions(shell: Shell, _completion_file: &std::path::Path) -> Result<()> {
     match shell {
         Shell::Bash => {
             println!("📝 To enable bash completion, add the following to your ~/.bashrc or ~/.bash_profile:");
@@ -707,10 +848,18 @@ mod tests {
         // Test that all shells can generate completion scripts
         for shell in [Shell::Bash, Shell::Zsh, Shell::Fish, Shell::PowerShell] {
             let result = generator.generate(shell);
-            assert!(result.is_ok(), "Failed to generate completion for {:?}", shell);
+            assert!(
+                result.is_ok(),
+                "Failed to generate completion for {:?}",
+                shell
+            );
 
             let script = result.unwrap();
-            assert!(!script.is_empty(), "Completion script is empty for {:?}", shell);
+            assert!(
+                !script.is_empty(),
+                "Completion script is empty for {:?}",
+                shell
+            );
         }
     }
 }

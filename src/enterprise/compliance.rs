@@ -3,13 +3,15 @@
 //! This module implements automated compliance reporting for various
 //! frameworks like SOC2, ISO27001, GDPR, etc.
 
-use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use anyhow::Result;
-use crate::enterprise::{UserId, WorkspaceId, audit::AuditEvent, audit::AuditQuery};
+#![allow(unused_imports, unused_variables, dead_code)]
+
+use crate::enterprise::UserId;
 use crate::error::EnvCliError;
+use crate::error::Result;
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Compliance framework
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -23,9 +25,9 @@ pub enum ComplianceFramework {
     /// Health Insurance Portability and Accountability Act
     HIPAA,
     /// Payment Card Industry Data Security Standard
-    PCI_DSS,
+    PciDss,
     /// NIST Cybersecurity Framework
-    NIST_CSF,
+    NistCsf,
     /// Custom compliance framework
     Custom(String),
 }
@@ -37,8 +39,8 @@ impl std::fmt::Display for ComplianceFramework {
             ComplianceFramework::ISO27001 => write!(f, "ISO27001"),
             ComplianceFramework::GDPR => write!(f, "GDPR"),
             ComplianceFramework::HIPAA => write!(f, "HIPAA"),
-            ComplianceFramework::PCI_DSS => write!(f, "PCI-DSS"),
-            ComplianceFramework::NIST_CSF => write!(f, "NIST-CSF"),
+            ComplianceFramework::PciDss => write!(f, "PCI-DSS"),
+            ComplianceFramework::NistCsf => write!(f, "NIST-CSF"),
             ComplianceFramework::Custom(name) => write!(f, "{}", name),
         }
     }
@@ -432,7 +434,8 @@ impl ComplianceEngine {
         self.add_control(ComplianceControl {
             id: "SOC2-S1".to_string(),
             name: "Access Control".to_string(),
-            description: "Logical and physical access controls safeguard against threats".to_string(),
+            description: "Logical and physical access controls safeguard against threats"
+                .to_string(),
             framework: ComplianceFramework::SOCSOC2,
             category: "Security".to_string(),
             requirements: vec![
@@ -440,16 +443,14 @@ impl ComplianceEngine {
                 "Authentication mechanisms".to_string(),
                 "Authorization controls".to_string(),
             ],
-            tests: vec![
-                ComplianceTest {
-                    id: "SOC2-S1-T1".to_string(),
-                    name: "Review user access controls".to_string(),
-                    description: "Verify proper access control implementation".to_string(),
-                    procedure: "Review access control policies and implementations".to_string(),
-                    expected_result: "All access controls properly implemented".to_string(),
-                    frequency: TestFrequency::Quarterly,
-                },
-            ],
+            tests: vec![ComplianceTest {
+                id: "SOC2-S1-T1".to_string(),
+                name: "Review user access controls".to_string(),
+                description: "Verify proper access control implementation".to_string(),
+                procedure: "Review access control policies and implementations".to_string(),
+                expected_result: "All access controls properly implemented".to_string(),
+                frequency: TestFrequency::Quarterly,
+            }],
             maturity_level: MaturityLevel::Level3,
             implementation_status: ImplementationStatus::FullyImplemented,
         });
@@ -466,16 +467,14 @@ impl ComplianceEngine {
                 "Data minimization".to_string(),
                 "Encryption of personal data".to_string(),
             ],
-            tests: vec![
-                ComplianceTest {
-                    id: "GDPR-D1-T1".to_string(),
-                    name: "Verify data encryption".to_string(),
-                    description: "Check that personal data is encrypted".to_string(),
-                    procedure: "Review encryption implementations".to_string(),
-                    expected_result: "All personal data properly encrypted".to_string(),
-                    frequency: TestFrequency::Monthly,
-                },
-            ],
+            tests: vec![ComplianceTest {
+                id: "GDPR-D1-T1".to_string(),
+                name: "Verify data encryption".to_string(),
+                description: "Check that personal data is encrypted".to_string(),
+                procedure: "Review encryption implementations".to_string(),
+                expected_result: "All personal data properly encrypted".to_string(),
+                frequency: TestFrequency::Monthly,
+            }],
             maturity_level: MaturityLevel::Level4,
             implementation_status: ImplementationStatus::Validated,
         });
@@ -492,7 +491,10 @@ impl ComplianceEngine {
     }
 
     /// Get controls for a specific framework
-    pub fn get_controls_for_framework(&self, framework: &ComplianceFramework) -> Vec<&ComplianceControl> {
+    pub fn get_controls_for_framework(
+        &self,
+        framework: &ComplianceFramework,
+    ) -> Vec<&ComplianceControl> {
         self.controls
             .values()
             .filter(|control| &control.framework == framework)
@@ -510,10 +512,9 @@ impl ComplianceEngine {
         evidence: Vec<EvidenceItem>,
         recommendations: Vec<String>,
     ) -> Result<()> {
-        let control = self.controls.get(control_id)
-            .ok_or_else(|| EnvCliError::ComplianceError(
-                format!("Control {} not found", control_id)
-            ))?;
+        let control = self.controls.get(control_id).ok_or_else(|| {
+            EnvCliError::ComplianceError(format!("Control {} not found", control_id))
+        })?;
 
         let assessment = ControlAssessment {
             control_id: control_id.to_string(),
@@ -543,12 +544,18 @@ impl ComplianceEngine {
 
         for control in controls {
             // Find recent assessments for this control
-            let recent_assessments: Vec<_> = self.assessments
+            let recent_assessments: Vec<_> = self
+                .assessments
                 .iter()
-                .filter(|a| a.control_id == control.id && a.assessed_at >= period.start_date && a.assessed_at <= period.end_date)
+                .filter(|a| {
+                    a.control_id == control.id
+                        && a.assessed_at >= period.start_date
+                        && a.assessed_at <= period.end_date
+                })
                 .collect();
 
-            if let Some(latest_assessment) = recent_assessments.iter().max_by_key(|a| a.assessed_at) {
+            if let Some(latest_assessment) = recent_assessments.iter().max_by_key(|a| a.assessed_at)
+            {
                 control_assessments.push((*latest_assessment).clone());
             } else {
                 // Create a default assessment if none found
@@ -570,7 +577,11 @@ impl ComplianceEngine {
         let overall_score = if control_assessments.is_empty() {
             0
         } else {
-            control_assessments.iter().map(|a| a.score as u32).sum::<u32>() / control_assessments.len() as u32
+            control_assessments
+                .iter()
+                .map(|a| a.score as u32)
+                .sum::<u32>()
+                / control_assessments.len() as u32
         } as u8;
 
         // Generate risk assessment
@@ -588,9 +599,7 @@ impl ComplianceEngine {
             generated_by,
             overall_score,
             controls: control_assessments,
-            summary_findings: vec![
-                format!("Overall compliance score: {}%", overall_score),
-            ],
+            summary_findings: vec![format!("Overall compliance score: {}%", overall_score)],
             risk_assessment,
             recommendations,
             status: ReportStatus::Completed,
@@ -666,8 +675,12 @@ impl ComplianceEngine {
                 AssessmentResult::NonCompliant => {
                     recommendations.push(Recommendation {
                         id: Uuid::new_v4(),
-                        title: format!("Address Non-Compliance in Control {}", assessment.control_id),
-                        description: "Control assessment identified non-compliance issues".to_string(),
+                        title: format!(
+                            "Address Non-Compliance in Control {}",
+                            assessment.control_id
+                        ),
+                        description: "Control assessment identified non-compliance issues"
+                            .to_string(),
                         priority: RecommendationPriority::High,
                         control_id: Some(assessment.control_id.clone()),
                         effort: EffortLevel::Medium,
@@ -679,7 +692,10 @@ impl ComplianceEngine {
                 AssessmentResult::PartiallyCompliant => {
                     recommendations.push(Recommendation {
                         id: Uuid::new_v4(),
-                        title: format!("Improve Implementation of Control {}", assessment.control_id),
+                        title: format!(
+                            "Improve Implementation of Control {}",
+                            assessment.control_id
+                        ),
                         description: "Control implementation needs improvement".to_string(),
                         priority: RecommendationPriority::Medium,
                         control_id: Some(assessment.control_id.clone()),
@@ -730,7 +746,10 @@ mod tests {
         assert_eq!(format!("{}", ComplianceFramework::SOCSOC2), "SOC2");
         assert_eq!(format!("{}", ComplianceFramework::ISO27001), "ISO27001");
         assert_eq!(format!("{}", ComplianceFramework::GDPR), "GDPR");
-        assert_eq!(format!("{}", ComplianceFramework::Custom("HIPAA".to_string())), "HIPAA");
+        assert_eq!(
+            format!("{}", ComplianceFramework::Custom("HIPAA".to_string())),
+            "HIPAA"
+        );
     }
 
     #[test]

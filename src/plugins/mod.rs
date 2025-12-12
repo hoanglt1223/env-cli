@@ -3,10 +3,13 @@
 //! This module provides a foundation for plugin-based extensibility
 //! that allows users to add custom scanning and processing capabilities.
 
+#![allow(unused_imports, unused_variables, dead_code)]
+
 use crate::error::Result;
-use std::collections::HashMap;
-use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::path::PathBuf;
 
 /// Plugin trait for extensible functionality
 pub trait Plugin {
@@ -144,12 +147,47 @@ pub struct ValidationContext {
 }
 
 /// Validation rule
-#[derive(Debug, Clone)]
 pub struct ValidationRule {
     pub name: String,
     pub pattern: String,
     pub required: bool,
     pub validator: Box<dyn ValidationFn>,
+}
+
+impl Debug for ValidationRule {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ValidationRule")
+            .field("name", &self.name)
+            .field("pattern", &self.pattern)
+            .field("required", &self.required)
+            .field("validator", &"<validation function>")
+            .finish()
+    }
+}
+
+impl Clone for ValidationRule {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            pattern: self.pattern.clone(),
+            required: self.required,
+            validator: Box::new(CloneValidator(
+                self.validator.as_ref() as *const dyn ValidationFn
+            )),
+        }
+    }
+}
+
+// Helper struct for cloning validation functions
+struct CloneValidator(*const dyn ValidationFn);
+
+unsafe impl Send for CloneValidator {}
+unsafe impl Sync for CloneValidator {}
+
+impl ValidationFn for CloneValidator {
+    fn validate(&self, value: &str) -> ValidationResult {
+        unsafe { (*self.0).validate(value) }
+    }
 }
 
 /// Trait for validation functions
@@ -203,7 +241,8 @@ impl PluginRegistry {
         // Check security policy
         if !self.security_policy.allow_plugin(&name) {
             return Err(crate::error::EnvCliError::Config(format!(
-                "Plugin '{}' is not allowed by security policy", name
+                "Plugin '{}' is not allowed by security policy",
+                name
             )));
         }
 
@@ -227,7 +266,7 @@ impl PluginRegistry {
 
         for plugin in self.plugins.values() {
             // Only run plugins that are applicable to this file type
-            if self.is_plugin_applicable(plugin, context) {
+            if self.is_plugin_applicable(plugin.as_ref(), context) {
                 let result = plugin.scan(context)?;
                 results.push(result);
             }

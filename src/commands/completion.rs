@@ -2,7 +2,9 @@
 //!
 //! This module handles shell completion generation and installation.
 
-use crate::cli::completion::{install_completion, uninstall_completion, Shell, CompletionGenerator};
+use crate::cli::completion::{
+    install_completion, uninstall_completion, CompletionGenerator, Shell,
+};
 use crate::error::Result;
 
 /// Execute the completion command.

@@ -3,15 +3,21 @@
 //! This module provides encryption services for sensitive environment data,
 //! implementing zero-knowledge encryption and key management.
 
-use std::collections::HashMap;
-use aes_gcm::{Aes256Gcm, KeyInit, Nonce, aead::{Aead, OsRng}};
-use argon2::{Argon2, PasswordHash, PasswordHasher, password_hash::{SaltString, rand_core::OsRng as ArgonRng}};
+#![allow(unused_imports, unused_variables, dead_code)]
+
+use crate::error::{EnvCliError, Result};
+use aes_gcm::{
+    aead::{Aead, OsRng},
+    Aes256Gcm, KeyInit, Nonce,
+};
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use hex;
 use rand::RngCore;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use zeroize::{Zeroize, ZeroizeOnDrop};
-use secrecy::{Secret, ExposeSecret};
-use anyhow::Result;
-use crate::error::EnvCliError;
+use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Encrypted value with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,13 +37,12 @@ pub struct EncryptedValue {
 }
 
 /// Encryption key with metadata
-#[derive(Debug, Clone, ZeroizeOnDrop)]
+#[derive(Debug, Clone)]
 pub struct EncryptionKey {
     /// Key identifier
     pub key_id: String,
     /// Key material (32 bytes for AES-256)
-    #[zeroize(skip)]
-    key_material: Secret<[u8; 32]>,
+    key_material: SecretString,
     /// Key creation timestamp
     pub created_at: chrono::DateTime<chrono::Utc>,
     /// Key expiration timestamp (optional)
@@ -48,6 +53,12 @@ pub struct EncryptionKey {
     pub version: u32,
 }
 
+impl Drop for EncryptionKey {
+    fn drop(&mut self) {
+        // The Secret type handles zeroizing automatically when dropped
+    }
+}
+
 impl EncryptionKey {
     /// Generate a new encryption key
     pub fn generate() -> Self {
@@ -56,7 +67,7 @@ impl EncryptionKey {
 
         Self {
             key_id: Uuid::new_v4().to_string(),
-            key_material: Secret::new(key_material),
+            key_material: SecretString::new(format!("{:02x?}", key_material).into_boxed_str()),
             created_at: chrono::Utc::now(),
             expires_at: None,
             is_active: true,
@@ -68,7 +79,7 @@ impl EncryptionKey {
     pub fn from_bytes(key_material: [u8; 32], key_id: String) -> Self {
         Self {
             key_id,
-            key_material: Secret::new(key_material),
+            key_material: SecretString::new(format!("{:02x?}", key_material).into_boxed_str()),
             created_at: chrono::Utc::now(),
             expires_at: None,
             is_active: true,
@@ -77,8 +88,15 @@ impl EncryptionKey {
     }
 
     /// Get the key material (exposes the secret)
-    pub fn key_material(&self) -> &[u8; 32] {
+    pub fn key_material(&self) -> &str {
         self.key_material.expose_secret()
+    }
+
+    /// Get the key material as bytes (exposes the secret)
+    pub fn key_material_bytes(&self) -> Result<Vec<u8>> {
+        hex::decode(self.key_material()).map_err(|e| {
+            EnvCliError::EncryptionError(format!("Failed to decode key material: {}", e))
+        })
     }
 
     /// Check if the key is expired
@@ -123,7 +141,8 @@ impl MasterKey {
         let salt_str = SaltString::encode_b64(&salt)
             .map_err(|e| EnvCliError::EncryptionError(format!("Failed to encode salt: {}", e)))?;
 
-        let password_hash = argon2.hash_password(password.as_bytes(), &salt_str)
+        let password_hash = argon2
+            .hash_password(password.as_bytes(), &salt_str)
             .map_err(|e| EnvCliError::EncryptionError(format!("Failed to derive key: {}", e)))?;
 
         // In a real implementation, we would encrypt the master key with the derived key
@@ -145,10 +164,12 @@ impl MasterKey {
             .map_err(|e| EnvCliError::EncryptionError(format!("Failed to encode salt: {}", e)))?;
 
         let argon2 = Argon2::default();
-        let password_hash = argon2.hash_password(password.as_bytes(), &salt_str)
+        let password_hash = argon2
+            .hash_password(password.as_bytes(), &salt_str)
             .map_err(|e| EnvCliError::EncryptionError(format!("Failed to derive key: {}", e)))?;
 
-        let hash_bytes = password_hash.hash.unwrap().as_bytes();
+        let binding = password_hash.hash.unwrap();
+        let hash_bytes = binding.as_bytes();
         if hash_bytes.len() >= 32 {
             let mut key = [0u8; 32];
             key.copy_from_slice(&hash_bytes[..32]);
@@ -184,7 +205,7 @@ impl KeyDerivation {
     /// Derive a key from the given master key and context
     pub fn derive_key(&self, master_key: &[u8; 32], context: &str) -> Result<[u8; 32]> {
         // Use HKDF-like key derivation
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
 
         let mut hasher = Sha256::new();
         hasher.update(master_key);
@@ -255,7 +276,9 @@ impl EncryptionService {
     async fn derive_initial_key(&mut self, password: &str) -> Result<()> {
         if let Some(master_key) = &self.master_key {
             let master_key_bytes = master_key.decrypt(password)?;
-            let derived_key = self.key_derivation.derive_key(&master_key_bytes, "data_encryption")?;
+            let derived_key = self
+                .key_derivation
+                .derive_key(&master_key_bytes, "data_encryption")?;
             let key = EncryptionKey::from_bytes(derived_key, Uuid::new_v4().to_string());
             let key_id = key.key_id.clone();
             self.encryption_keys.insert(key_id.clone(), key);
@@ -266,28 +289,35 @@ impl EncryptionService {
 
     /// Encrypt sensitive data
     pub async fn encrypt(&self, data: &str, key_id: Option<&str>) -> Result<EncryptedValue> {
-        let key_id = key_id.or(self.current_key_id.as_ref())
-            .ok_or_else(|| EnvCliError::EncryptionError("No encryption key available".to_string()))?;
+        let key_id = key_id
+            .or(self.current_key_id.as_ref().map(|s| s.as_str()))
+            .ok_or_else(|| {
+                EnvCliError::EncryptionError("No encryption key available".to_string())
+            })?;
 
-        let key = self.encryption_keys.get(key_id)
+        let key = self
+            .encryption_keys
+            .get(key_id)
             .ok_or_else(|| EnvCliError::EncryptionError(format!("Key '{}' not found", key_id)))?;
 
-        let cipher = Aes256Gcm::new_from_slice(key.key_material())?;
+        let key_bytes = key.key_material_bytes()?;
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes)?;
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
 
-        let ciphertext = cipher.encrypt(nonce, data.as_bytes())
+        let ciphertext = cipher
+            .encrypt(nonce, data.as_bytes())
             .map_err(|e| EnvCliError::EncryptionError(format!("Encryption failed: {}", e)))?;
 
         // Split ciphertext and tag (in AES-GCM, the tag is part of the ciphertext)
-        let tag = ciphertext[ciphertext.len()-16..].to_vec();
-        let ciphertext_without_tag = ciphertext[..ciphertext.len()-16].to_vec();
+        let tag = ciphertext[ciphertext.len() - 16..].to_vec();
+        let ciphertext_without_tag = ciphertext[..ciphertext.len() - 16].to_vec();
 
         Ok(EncryptedValue {
-            ciphertext: base64::encode(&ciphertext_without_tag),
-            nonce: base64::encode(&nonce_bytes),
-            tag: base64::encode(&tag),
+            ciphertext: BASE64.encode(&ciphertext_without_tag),
+            nonce: BASE64.encode(&nonce_bytes),
+            tag: BASE64.encode(&tag),
             key_id: key_id.to_string(),
             algorithm: self.algorithm.clone(),
             encrypted_at: chrono::Utc::now(),
@@ -296,30 +326,41 @@ impl EncryptionService {
 
     /// Decrypt sensitive data
     pub async fn decrypt(&self, encrypted_value: &EncryptedValue) -> Result<String> {
-        let key = self.encryption_keys.get(&encrypted_value.key_id)
-            .ok_or_else(|| EnvCliError::EncryptionError(
-                format!("Key '{}' not found for decryption", encrypted_value.key_id)
-            ))?;
+        let key = self
+            .encryption_keys
+            .get(&encrypted_value.key_id)
+            .ok_or_else(|| {
+                EnvCliError::EncryptionError(format!(
+                    "Key '{}' not found for decryption",
+                    encrypted_value.key_id
+                ))
+            })?;
 
-        let ciphertext = base64::decode(&encrypted_value.ciphertext)
-            .map_err(|e| EnvCliError::EncryptionError(format!("Failed to decode ciphertext: {}", e)))?;
-        let nonce_bytes = base64::decode(&encrypted_value.nonce)
+        let ciphertext = BASE64.decode(&encrypted_value.ciphertext).map_err(|e| {
+            EnvCliError::EncryptionError(format!("Failed to decode ciphertext: {}", e))
+        })?;
+        let nonce_bytes = BASE64
+            .decode(&encrypted_value.nonce)
             .map_err(|e| EnvCliError::EncryptionError(format!("Failed to decode nonce: {}", e)))?;
-        let tag = base64::decode(&encrypted_value.tag)
+        let tag = BASE64
+            .decode(&encrypted_value.tag)
             .map_err(|e| EnvCliError::EncryptionError(format!("Failed to decode tag: {}", e)))?;
 
         // Combine ciphertext and tag for AES-GCM
         let mut ciphertext_with_tag = ciphertext;
         ciphertext_with_tag.extend_from_slice(&tag);
 
-        let cipher = Aes256Gcm::new_from_slice(key.key_material())?;
+        let key_bytes = key.key_material_bytes()?;
+        let cipher = Aes256Gcm::new_from_slice(&key_bytes)?;
         let nonce = Nonce::from_slice(&nonce_bytes);
 
-        let plaintext = cipher.decrypt(nonce, ciphertext_with_tag.as_ref())
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext_with_tag.as_ref())
             .map_err(|e| EnvCliError::EncryptionError(format!("Decryption failed: {}", e)))?;
 
-        Ok(String::from_utf8(plaintext)
-            .map_err(|e| EnvCliError::EncryptionError(format!("Invalid UTF-8 in decrypted data: {}", e)))?)
+        Ok(String::from_utf8(plaintext).map_err(|e| {
+            EnvCliError::EncryptionError(format!("Invalid UTF-8 in decrypted data: {}", e))
+        })?)
     }
 
     /// Generate a new encryption key
@@ -370,8 +411,8 @@ impl EncryptionService {
 
 /// Secure random string generator
 pub fn generate_secure_random(length: usize) -> String {
-    use rand::{Rng, thread_rng};
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
+    use rand::{thread_rng, Rng};
 
     let mut bytes = vec![0u8; length];
     thread_rng().fill(&mut bytes[..]);
@@ -380,7 +421,7 @@ pub fn generate_secure_random(length: usize) -> String {
 
 /// Hash sensitive values for comparison
 pub fn hash_sensitive_value(value: &str, salt: &str) -> Result<String> {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
 
     let mut hasher = Sha256::new();
     hasher.update(value.as_bytes());

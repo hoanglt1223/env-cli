@@ -3,17 +3,17 @@
 //! This module implements comprehensive audit logging for all enterprise
 //! operations with configurable retention and forensic capabilities.
 
-use std::collections::HashMap;
-use chrono::{DateTime, Utc, Duration};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use anyhow::Result;
-use tokio::sync::RwLock;
-use parking_lot::Mutex;
-use std::sync::Arc;
-use crate::enterprise::{UserId, WorkspaceId, EnvironmentId, Outcome};
 use crate::enterprise::config::AuditConfig;
+use crate::enterprise::{EnvironmentId, Outcome, UserId, WorkspaceId};
 use crate::error::EnvCliError;
+use crate::error::Result;
+use chrono::{DateTime, Duration, Utc};
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 /// Comprehensive audit event
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,12 +56,7 @@ pub struct AuditEvent {
 
 impl AuditEvent {
     /// Create a new audit event
-    pub fn new(
-        user_id: UserId,
-        action: String,
-        resource_type: String,
-        outcome: Outcome,
-    ) -> Self {
+    pub fn new(user_id: UserId, action: String, resource_type: String, outcome: Outcome) -> Self {
         Self {
             id: Uuid::new_v4(),
             timestamp: Utc::now(),
@@ -151,7 +146,7 @@ impl AuditEvent {
 }
 
 /// Audit severity levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum AuditSeverity {
     /// Debug level information
     Debug,
@@ -184,7 +179,7 @@ impl AuditSeverity {
 }
 
 /// Audit event categories
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum AuditCategory {
     /// General uncategorized events
     General,
@@ -374,7 +369,7 @@ impl Default for RetentionPolicy {
     fn default() -> Self {
         Self {
             general_retention_days: 90,
-            security_retention_days: 2555, // 7 years
+            security_retention_days: 2555,   // 7 years
             compliance_retention_days: 2555, // 7 years
             enable_archival: false,
             archival_location: None,
@@ -421,10 +416,14 @@ impl AuditLogger {
         {
             let mut metrics = self.metrics.lock();
             metrics.total_events += 1;
-            metrics.events_by_category.entry(event.category.clone())
+            metrics
+                .events_by_category
+                .entry(event.category.clone())
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
-            metrics.events_by_severity.entry(event.severity.clone())
+            metrics
+                .events_by_severity
+                .entry(event.severity.clone())
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
@@ -500,7 +499,9 @@ impl AuditLogger {
 
     /// Clean up old events based on retention policy
     pub async fn cleanup_old_events(&self) -> Result<usize> {
-        self.storage.cleanup_old_events(self.config.retention_days).await
+        self.storage
+            .cleanup_old_events(self.config.retention_days)
+            .await
     }
 
     /// Generate audit report
@@ -516,7 +517,10 @@ impl AuditLogger {
     /// Handle critical audit events
     async fn handle_critical_event(&self, event: &AuditEvent) -> Result<()> {
         // In a real implementation, this would send alerts, notifications, etc.
-        eprintln!("CRITICAL AUDIT EVENT: {} by {}", event.action, event.user_id);
+        eprintln!(
+            "CRITICAL AUDIT EVENT: {} by {}",
+            event.action, event.user_id
+        );
         Ok(())
     }
 }
@@ -578,8 +582,9 @@ impl AuditFormatter {
 
     /// Format events as JSON
     fn format_json(&self, events: &[AuditEvent]) -> Result<String> {
-        serde_json::to_string_pretty(events)
-            .map_err(|e| EnvCliError::AuditError(format!("JSON serialization failed: {}", e)).into())
+        serde_json::to_string_pretty(events).map_err(|e| {
+            EnvCliError::AuditError(format!("JSON serialization failed: {}", e)).into()
+        })
     }
 
     /// Format events as CSV
@@ -711,12 +716,15 @@ mod tests {
         let logger = AuditLogger::new(&config).await.unwrap();
 
         let user_id = Uuid::new_v4();
-        logger.log_success(
-            user_id,
-            "create_environment".to_string(),
-            "environment".to_string(),
-            None,
-        ).await.unwrap();
+        logger
+            .log_success(
+                user_id,
+                "create_environment".to_string(),
+                "environment".to_string(),
+                None,
+            )
+            .await
+            .unwrap();
 
         let query = AuditQuery::default();
         let events = logger.query_events(&query).await.unwrap();

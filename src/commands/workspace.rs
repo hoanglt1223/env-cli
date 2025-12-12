@@ -1,17 +1,12 @@
 //! Workspace management commands for enterprise features
 
+use crate::commands::CommandResult;
+use crate::enterprise::auth::AuthContext;
+use crate::enterprise::collaboration::WorkspaceRole;
+use crate::enterprise::{SharedEnvironment, TeamWorkspace};
+use crate::EnvCliError;
 use clap::{Args, Subcommand};
 use uuid::Uuid;
-use anyhow::Result;
-use crate::enterprise::{
-    TeamWorkspace, TeamMember, WorkspaceRole, WorkspacePermission,
-    SharedEnvironment, UserId, WorkspaceId, EnvironmentId,
-};
-use crate::enterprise::collaboration::ConflictResolver;
-use crate::enterprise::rbac::RbacEngine;
-use crate::enterprise::auth::AuthContext;
-use crate::commands::CommandResult;
-use crate::error::EnvCliError;
 
 /// Workspace management commands
 #[derive(Args)]
@@ -232,16 +227,15 @@ pub async fn execute_workspace_command(
         WorkspaceSubcommand::RemoveMember(args) => remove_member(args, auth_context).await,
         WorkspaceSubcommand::ListMembers(args) => list_members(args, auth_context).await,
         WorkspaceSubcommand::AddEnvironment(args) => add_environment(args, auth_context).await,
-        WorkspaceSubcommand::RemoveEnvironment(args) => remove_environment(args, auth_context).await,
+        WorkspaceSubcommand::RemoveEnvironment(args) => {
+            remove_environment(args, auth_context).await
+        }
         WorkspaceSubcommand::ListEnvironments(args) => list_environments(args, auth_context).await,
     }
 }
 
 /// Create a new workspace
-async fn create_workspace(
-    args: CreateWorkspaceArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn create_workspace(args: CreateWorkspaceArgs, auth_context: &AuthContext) -> CommandResult {
     // In a real implementation, this would interact with workspace storage
     println!("Creating workspace: {}", args.name);
 
@@ -259,22 +253,19 @@ async fn create_workspace(
 }
 
 /// List workspaces
-async fn list_workspaces(
-    args: ListWorkspaceArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn list_workspaces(args: ListWorkspaceArgs, _auth_context: &AuthContext) -> CommandResult {
     // In a real implementation, this would fetch workspaces from storage
     println!("Listing workspaces:");
 
     match args.format.as_str() {
         "json" => {
-            let workspaces = vec![]; // Placeholder
+            let workspaces: Vec<String> = vec![]; // Placeholder
             println!("{}", serde_json::to_string_pretty(&workspaces)?);
-        },
+        }
         "yaml" => {
-            let workspaces = vec![]; // Placeholder
+            let workspaces: Vec<String> = vec![]; // Placeholder
             println!("{}", serde_yaml::to_string(&workspaces)?);
-        },
+        }
         _ => {
             println!("ID                                    | Name                | Owner               | Members | Created");
             println!("---------------------------------------|---------------------|---------------------|---------|---------");
@@ -286,10 +277,7 @@ async fn list_workspaces(
 }
 
 /// Show workspace details
-async fn show_workspace(
-    args: ShowWorkspaceArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn show_workspace(args: ShowWorkspaceArgs, auth_context: &AuthContext) -> CommandResult {
     // In a real implementation, this would fetch workspace from storage
     println!("Showing workspace details for: {}", args.workspace);
 
@@ -310,17 +298,14 @@ async fn show_workspace(
 }
 
 /// Update workspace settings
-async fn update_workspace(
-    args: UpdateWorkspaceArgs,
-    _auth_context: &AuthContext,
-) -> CommandResult {
+async fn update_workspace(args: UpdateWorkspaceArgs, _auth_context: &AuthContext) -> CommandResult {
     // In a real implementation, this would update workspace in storage
     println!("Updating workspace: {}", args.workspace);
 
     if let Some(name) = args.name {
         println!("  Name: {}", name);
     }
-    if let Some(description) = args.description {
+    if let Some(ref description) = args.description {
         println!("  Description: {}", description);
     }
     if let Some(visibility) = args.visibility {
@@ -333,14 +318,14 @@ async fn update_workspace(
 }
 
 /// Delete a workspace
-async fn delete_workspace(
-    args: DeleteWorkspaceArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn delete_workspace(args: DeleteWorkspaceArgs, auth_context: &AuthContext) -> CommandResult {
     // In a real implementation, this would delete workspace from storage
     if !args.force {
         // In a real implementation, this would prompt for confirmation
-        println!("This will permanently delete the workspace '{}' and all its data.", args.workspace);
+        println!(
+            "This will permanently delete the workspace '{}' and all its data.",
+            args.workspace
+        );
         println!("Use --force to confirm deletion.");
         return Ok(());
     }
@@ -353,10 +338,7 @@ async fn delete_workspace(
 }
 
 /// Add a member to workspace
-async fn add_member(
-    args: AddMemberArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn add_member(args: AddMemberArgs, _auth_context: &AuthContext) -> CommandResult {
     // Parse role
     let role = match args.role.as_str() {
         "owner" => WorkspaceRole::Owner,
@@ -365,9 +347,11 @@ async fn add_member(
         "viewer" => WorkspaceRole::Viewer,
         "guest" => WorkspaceRole::Guest,
         _ => {
-            return Err(EnvCliError::ValidationError(
-                format!("Invalid role: {}. Valid roles: owner, admin, editor, viewer, guest", args.role)
-            ).into());
+            return Err(EnvCliError::Validation(format!(
+                "Invalid role: {}. Valid roles: owner, admin, editor, viewer, guest",
+                args.role
+            ))
+            .into());
         }
     };
 
@@ -386,13 +370,13 @@ async fn add_member(
 }
 
 /// Remove a member from workspace
-async fn remove_member(
-    args: RemoveMemberArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn remove_member(args: RemoveMemberArgs, auth_context: &AuthContext) -> CommandResult {
     if !args.force {
         // In a real implementation, this would prompt for confirmation
-        println!("This will remove '{}' from workspace '{}'.", args.user, args.workspace);
+        println!(
+            "This will remove '{}' from workspace '{}'.",
+            args.user, args.workspace
+        );
         println!("Use --force to confirm removal.");
         return Ok(());
     }
@@ -407,21 +391,18 @@ async fn remove_member(
 }
 
 /// List workspace members
-async fn list_members(
-    args: ListMembersArgs,
-    _auth_context: &AuthContext,
-) -> CommandResult {
+async fn list_members(args: ListMembersArgs, _auth_context: &AuthContext) -> CommandResult {
     println!("Listing members for workspace: {}", args.workspace);
 
     match args.format.as_str() {
         "json" => {
-            let members = vec![]; // Placeholder
+            let members: Vec<String> = vec![]; // Placeholder
             println!("{}", serde_json::to_string_pretty(&members)?);
-        },
+        }
         "yaml" => {
-            let members = vec![]; // Placeholder
+            let members: Vec<String> = vec![]; // Placeholder
             println!("{}", serde_yaml::to_string(&members)?);
-        },
+        }
         _ => {
             println!("User ID                               | Username   | Email                | Role   | Joined");
             println!("---------------------------------------|------------|----------------------|--------|---------");
@@ -433,15 +414,12 @@ async fn list_members(
 }
 
 /// Add an environment to workspace
-async fn add_environment(
-    args: AddEnvironmentArgs,
-    auth_context: &AuthContext,
-) -> CommandResult {
+async fn add_environment(args: AddEnvironmentArgs, auth_context: &AuthContext) -> CommandResult {
     println!("Adding environment to workspace:");
     println!("  Workspace: {}", args.workspace);
     println!("  Environment: {}", args.name);
 
-    if let Some(description) = args.description {
+    if let Some(ref description) = args.description {
         println!("  Description: {}", description);
     }
     println!("  Type: {}", args.environment_type);
@@ -468,7 +446,10 @@ async fn remove_environment(
 ) -> CommandResult {
     if !args.force {
         // In a real implementation, this would prompt for confirmation
-        println!("This will remove environment '{}' from workspace '{}'.", args.environment, args.workspace);
+        println!(
+            "This will remove environment '{}' from workspace '{}'.",
+            args.environment, args.workspace
+        );
         println!("Use --force to confirm removal.");
         return Ok(());
     }
@@ -491,13 +472,13 @@ async fn list_environments(
 
     match args.format.as_str() {
         "json" => {
-            let environments = vec![]; // Placeholder
+            let environments: Vec<String> = vec![]; // Placeholder
             println!("{}", serde_json::to_string_pretty(&environments)?);
-        },
+        }
         "yaml" => {
-            let environments = vec![]; // Placeholder
+            let environments: Vec<String> = vec![]; // Placeholder
             println!("{}", serde_yaml::to_string(&environments)?);
-        },
+        }
         _ => {
             println!("ID                                    | Name                | Type         | Owner               | Created");
             println!("---------------------------------------|---------------------|--------------|---------------------|---------");

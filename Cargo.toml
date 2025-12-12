@@ -49,6 +49,9 @@ diff = "0.1"
 # Async runtime
 tokio = { version = "1.42", features = ["full"] }
 
+# Logging and tracing
+tracing = "0.1"
+
 # Enterprise and security dependencies for EC-05
 uuid = { version = "1.11", features = ["v4", "serde"] }
 argon2 = "0.5"
@@ -57,20 +60,24 @@ base64 = "0.22"
 hex = "0.4"
 jsonwebtoken = "9.3"
 bcrypt = "0.15"
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "uuid", "chrono", "postgres", "migrate"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "uuid", "chrono", "postgres", "migrate"] }
 chrono-tz = "0.10"
 sha2 = "0.10"
 hmac = "0.12"
 aes-gcm = "0.10"
 rand_chacha = "0.3"
 zeroize = { version = "1.8", features = ["zeroize_derive"] }
-secrecy = "0.10"
+secrecy = { version = "0.10", features = ["serde"] }
 url = "2.5"
 
-# Enterprise integrations
-reqwest = { version = "0.12", features = ["json"] }
-ldap3 = "0.12"
-openssl = "0.10"
+# Enterprise integrations with native TLS support
+reqwest = { version = "0.12", features = ["json", "native-tls"], default-features = false }
+ldap3 = { version = "0.12", features = ["tls-native"] }
+
+# Native TLS for Windows compatibility (no external build dependencies)
+native-tls = "0.2"
+
+# XML processing
 xml-rs = "0.8"
 quick-xml = { version = "0.37", features = ["serialize"] }
 

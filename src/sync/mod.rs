@@ -4,10 +4,10 @@
 //! with conflict detection, resolution strategies, and comprehensive audit logging.
 
 use crate::error::Result;
-use std::collections::HashMap;
-use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// Represents a synchronization conflict between environments
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,7 +109,9 @@ impl EnvironmentSync {
         let resolved_conflicts = self.resolve_conflicts(conflicts).await?;
 
         // Perform synchronization
-        let synced_variables = self.perform_sync(&source_env, &target_path, &resolved_conflicts).await?;
+        let synced_variables = self
+            .perform_sync(&source_env, &target_path, &resolved_conflicts)
+            .await?;
 
         let duration = start_time.elapsed();
 
@@ -119,10 +121,14 @@ impl EnvironmentSync {
             &source_env,
             &target_env,
             synced_variables.clone(),
-            resolved_conflicts.iter().map(|c| c.variable.clone()).collect(),
+            resolved_conflicts
+                .iter()
+                .map(|c| c.variable.clone())
+                .collect(),
             Vec::new(),
             duration.as_millis() as u64,
-        ).await?;
+        )
+        .await?;
 
         Ok(SyncResult {
             synced_variables,
@@ -143,7 +149,8 @@ impl EnvironmentSync {
         let target_env = self.load_environment(target_path).await?;
 
         let conflicts = self.detect_conflicts(&source_env, &target_env);
-        let proposed_changes = self.calculate_proposed_changes(&source_env, &target_env, &conflicts);
+        let proposed_changes =
+            self.calculate_proposed_changes(&source_env, &target_env, &conflicts);
 
         Ok(DryRunResult {
             conflicts,
@@ -229,7 +236,7 @@ impl EnvironmentSync {
     fn recommend_resolution(
         &self,
         variable: &str,
-        source_value: &str,
+        _source_value: &str,
         target_value: &str,
     ) -> ConflictResolution {
         // Security-sensitive variables should be manually reviewed
@@ -249,12 +256,12 @@ impl EnvironmentSync {
     /// Check if a variable is security-sensitive.
     fn is_security_sensitive(&self, variable: &str) -> bool {
         let variable_lower = variable.to_lowercase();
-        variable_lower.contains("password") ||
-        variable_lower.contains("secret") ||
-        variable_lower.contains("key") ||
-        variable_lower.contains("token") ||
-        variable_lower.contains("credential") ||
-        variable_lower.contains("private")
+        variable_lower.contains("password")
+            || variable_lower.contains("secret")
+            || variable_lower.contains("key")
+            || variable_lower.contains("token")
+            || variable_lower.contains("credential")
+            || variable_lower.contains("private")
     }
 
     /// Resolve conflicts based on configuration.
@@ -283,7 +290,7 @@ impl EnvironmentSync {
     /// Perform the actual synchronization.
     async fn perform_sync(
         &self,
-        source_env: &HashMap<String, String>,
+        _source_env: &HashMap<String, String>,
         target_path: &PathBuf,
         resolved_conflicts: &[SyncConflict],
     ) -> Result<Vec<String>> {
@@ -293,7 +300,8 @@ impl EnvironmentSync {
             match conflict.recommendation {
                 ConflictResolution::KeepSource | ConflictResolution::Merge => {
                     // Update target with source value
-                    self.update_variable(target_path, &conflict.variable, &conflict.source_value).await?;
+                    self.update_variable(target_path, &conflict.variable, &conflict.source_value)
+                        .await?;
                     synced_vars.push(conflict.variable.clone());
                 }
                 ConflictResolution::KeepTarget | ConflictResolution::Skip => {
@@ -309,7 +317,12 @@ impl EnvironmentSync {
     }
 
     /// Update a single variable in the target environment file.
-    async fn update_variable(&self, target_path: &PathBuf, variable: &str, value: &str) -> Result<()> {
+    async fn update_variable(
+        &self,
+        target_path: &PathBuf,
+        variable: &str,
+        value: &str,
+    ) -> Result<()> {
         let content = if target_path.exists() {
             std::fs::read_to_string(target_path)?
         } else {
@@ -354,8 +367,8 @@ impl EnvironmentSync {
     /// Calculate proposed changes for dry run.
     fn calculate_proposed_changes(
         &self,
-        source: &HashMap<String, String>,
-        target: &HashMap<String, String>,
+        _source: &HashMap<String, String>,
+        _target: &HashMap<String, String>,
         conflicts: &[SyncConflict],
     ) -> Vec<ProposedChange> {
         let mut changes = Vec::new();
@@ -406,7 +419,10 @@ impl EnvironmentSync {
                             variable: key.clone(),
                             violation_type: SecurityViolationType::SecretModification,
                             severity: SecuritySeverity::High,
-                            description: format!("Security-sensitive variable '{}' is being modified", key),
+                            description: format!(
+                                "Security-sensitive variable '{}' is being modified",
+                                key
+                            ),
                         });
                     }
                 }
@@ -436,13 +452,21 @@ impl EnvironmentSync {
             conflicts_resolved,
             errors,
             duration_ms,
-            user: std::env::var("USER").ok().or_else(|| std::env::var("USERNAME").ok()),
+            user: std::env::var("USER")
+                .ok()
+                .or_else(|| std::env::var("USERNAME").ok()),
         };
 
         self.audit_log.push(entry);
 
         // Write audit log to file if configured
-        if self.config.audit_log_path.parent().map(|p| p.exists()).unwrap_or(true) {
+        if self
+            .config
+            .audit_log_path
+            .parent()
+            .map(|p| p.exists())
+            .unwrap_or(true)
+        {
             self.write_audit_log().await?;
         }
 

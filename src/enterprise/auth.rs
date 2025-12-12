@@ -3,14 +3,15 @@
 //! This module handles authentication, authorization, and single sign-on (SSO)
 //! integration for enterprise environments.
 
-use std::collections::HashMap;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use anyhow::Result;
-use crate::enterprise::{UserId, SSOConfig, LdapConfig};
+use crate::enterprise::{LdapConfig, SSOConfig, UserId};
 use crate::error::EnvCliError;
+use crate::error::Result;
+use chrono::{DateTime, Utc};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tracing::info;
+use uuid::Uuid;
 
 /// Authentication context for a user session
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,8 +120,7 @@ impl LocalAuthProvider {
 
     /// Verify password using bcrypt
     fn verify_password(&self, password: &str, hash: &str) -> Result<bool> {
-        let parsed_hash = bcrypt::Hash::new(hash)?;
-        Ok(bcrypt::verify(password, &parsed_hash)?)
+        Ok(bcrypt::verify(password, hash)?)
     }
 }
 
@@ -129,12 +129,15 @@ impl AuthProvider for LocalAuthProvider {
     async fn authenticate(&self, credentials: AuthCredentials) -> Result<AuthContext> {
         let username = &credentials.username;
         let password = credentials.password.ok_or_else(|| {
-            EnvCliError::AuthenticationError("Password required for local authentication".to_string())
+            EnvCliError::AuthenticationError(
+                "Password required for local authentication".to_string(),
+            )
         })?;
 
-        let user = self.users.get(username).ok_or_else(|| {
-            EnvCliError::AuthenticationError("User not found".to_string())
-        })?;
+        let user = self
+            .users
+            .get(username)
+            .ok_or_else(|| EnvCliError::AuthenticationError("User not found".to_string()))?;
 
         if !self.verify_password(&password, &user.password_hash)? {
             return Err(EnvCliError::AuthenticationError("Invalid password".to_string()).into());
@@ -226,7 +229,6 @@ impl JwtManager {
         let decoding_key = DecodingKey::from_secret(secret.as_ref());
         let mut validation = Validation::default();
         validation.validate_exp = true;
-        validation.validate_iat = true;
 
         Self {
             encoding_key,
@@ -250,11 +252,8 @@ impl JwtManager {
 
     /// Validate and decode a JWT token
     pub fn validate_token(&self, token: &str) -> Result<HashMap<String, String>> {
-        let token_data = decode::<HashMap<String, String>>(
-            token,
-            &self.decoding_key,
-            &self.validation,
-        )?;
+        let token_data =
+            decode::<HashMap<String, String>>(token, &self.decoding_key, &self.validation)?;
         Ok(token_data.claims)
     }
 }
@@ -280,7 +279,7 @@ impl AuthProvider for SamlAuthProvider {
         })?;
 
         // Placeholder implementation - would validate SAML response in reality
-        tracing::info!("SAML authentication request received");
+        info!("SAML authentication request received");
 
         Ok(AuthContext {
             user_id: Uuid::new_v4(),
@@ -332,11 +331,13 @@ impl AuthProvider for LdapAuthProvider {
     async fn authenticate(&self, credentials: AuthCredentials) -> Result<AuthContext> {
         // In a real implementation, this would connect to the LDAP server
         let password = credentials.password.ok_or_else(|| {
-            EnvCliError::AuthenticationError("Password required for LDAP authentication".to_string())
+            EnvCliError::AuthenticationError(
+                "Password required for LDAP authentication".to_string(),
+            )
         })?;
 
         // Placeholder implementation - would connect to LDAP in reality
-        tracing::info!("LDAP authentication request for: {}", credentials.username);
+        info!("LDAP authentication request for: {}", credentials.username);
 
         Ok(AuthContext {
             user_id: Uuid::new_v4(),
@@ -399,7 +400,11 @@ impl AuthManager {
     }
 
     /// Authenticate using the specified provider
-    pub async fn authenticate(&self, credentials: AuthCredentials, provider_name: Option<&str>) -> Result<String> {
+    pub async fn authenticate(
+        &self,
+        credentials: AuthCredentials,
+        provider_name: Option<&str>,
+    ) -> Result<String> {
         let provider_name = provider_name.unwrap_or(&self.default_provider);
         let provider = self.providers.get(provider_name).ok_or_else(|| {
             EnvCliError::AuthenticationError(format!("Provider '{}' not found", provider_name))
@@ -421,7 +426,10 @@ impl AuthManager {
         let user_id = Uuid::parse_str(user_id)?;
         let username = claims.get("username").unwrap_or(&"".to_string()).clone();
         let email = claims.get("email").unwrap_or(&"".to_string()).clone();
-        let display_name = claims.get("display_name").unwrap_or(&"".to_string()).clone();
+        let display_name = claims
+            .get("display_name")
+            .unwrap_or(&"".to_string())
+            .clone();
 
         let roles_str = claims.get("roles").unwrap_or(&"[]".to_string()).clone();
         let roles: Vec<String> = serde_json::from_str(&roles_str).unwrap_or_default();

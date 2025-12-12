@@ -1,11 +1,17 @@
 //! Advanced generate command implementation for EC-03.
 
+use crate::env::EnvUsage;
 use crate::error::Result;
-use crate::scan::{CodeScanner, ScanResult};
+use crate::scan::CodeScanner;
 use std::path::PathBuf;
 
 /// Generate .env.example file with advanced automated documentation.
-pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Option<PathBuf>) -> Result<()> {
+pub async fn execute(
+    output: PathBuf,
+    comments: bool,
+    docs: bool,
+    scan_dir: Option<PathBuf>,
+) -> Result<()> {
     println!("🔧 Generating .env.example file with advanced features...");
     println!("📄 Output: {}", output.display());
     println!("💬 Include comments: {}", comments);
@@ -26,7 +32,10 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
     println!("📊 Scan Statistics:");
     println!("  - Files scanned: {}", scan_result.files_scanned);
     println!("  - Variables found: {}", scan_result.variables.len());
-    println!("  - Languages detected: {}", scan_result.languages_detected.len());
+    println!(
+        "  - Languages detected: {}",
+        scan_result.languages_detected.len()
+    );
 
     // Extract variables for generation
     let variables: Vec<_> = scan_result.variables.values().collect();
@@ -38,7 +47,8 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
     }
 
     // Generate .env.example content
-    let env_example_content = scanner.generate_env_example(&variables, comments)?;
+    let usages: Vec<EnvUsage> = variables.iter().map(|v| (*v).clone()).collect();
+    let env_example_content = scanner.generate_env_example(&usages, comments)?;
 
     // Create output directory if it doesn't exist
     if let Some(parent) = output.parent() {
@@ -48,7 +58,10 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
     // Write .env.example file
     std::fs::write(&output, env_example_content)?;
 
-    println!("\n📋 Generated .env.example with {} variables:", variables.len());
+    println!(
+        "\n📋 Generated .env.example with {} variables:",
+        variables.len()
+    );
 
     // Group variables by type for display
     let mut database_vars = Vec::new();
@@ -63,7 +76,9 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
             database_vars.push(usage);
         } else if usage.name.contains("API") || usage.name.contains("TOKEN") {
             api_vars.push(usage);
-        } else if usage.name.to_uppercase().contains("SECRET") || usage.name.to_uppercase().contains("KEY") {
+        } else if usage.name.to_uppercase().contains("SECRET")
+            || usage.name.to_uppercase().contains("KEY")
+        {
             security_vars.push(usage);
         } else if usage.name.contains("PORT") || usage.name.contains("HOST") {
             network_vars.push(usage);
@@ -78,7 +93,11 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
         if !vars.is_empty() {
             println!("  🔧 {} ({}):", name, vars.len());
             for usage in vars {
-                println!("    - {} (used in {} location(s))", usage.name, usage.files.len());
+                println!(
+                    "    - {} (used in {} location(s))",
+                    usage.name,
+                    usage.files.len()
+                );
             }
         }
     };
@@ -105,12 +124,19 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
     // Display security summary
     if !scan_result.security_issues.is_empty() {
         println!("\n⚠️  Security Summary:");
-        println!("  - Total security issues: {}", scan_result.security_issues.len());
+        println!(
+            "  - Total security issues: {}",
+            scan_result.security_issues.len()
+        );
 
-        let critical_count = scan_result.security_issues.iter()
+        let critical_count = scan_result
+            .security_issues
+            .iter()
             .filter(|i| matches!(i.severity, crate::scan::SecuritySeverity::Critical))
             .count();
-        let high_count = scan_result.security_issues.iter()
+        let high_count = scan_result
+            .security_issues
+            .iter()
             .filter(|i| matches!(i.severity, crate::scan::SecuritySeverity::High))
             .count();
 
@@ -128,7 +154,10 @@ pub async fn execute(output: PathBuf, comments: bool, docs: bool, scan_dir: Opti
     println!("📁 File saved to: {}", output.display());
 
     if docs {
-        println!("📚 Documentation saved to: {}", output.with_extension("md").display());
+        println!(
+            "📚 Documentation saved to: {}",
+            output.with_extension("md").display()
+        );
     }
 
     println!("💡 Tips:");

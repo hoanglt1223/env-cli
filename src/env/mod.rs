@@ -93,12 +93,13 @@ impl EnvManager {
 
         for (key, value) in sorted_vars {
             // Quote values that contain spaces, special characters, or are empty
-            let formatted_value = if value.is_empty() ||
-                value.contains(' ') ||
-                value.contains('\n') ||
-                value.contains('\t') ||
-                value.contains('"') ||
-                value.contains('\'') {
+            let formatted_value = if value.is_empty()
+                || value.contains(' ')
+                || value.contains('\n')
+                || value.contains('\t')
+                || value.contains('"')
+                || value.contains('\'')
+            {
                 format!("\"{}\"", value.replace('"', "\\\""))
             } else {
                 value.clone()
@@ -124,9 +125,8 @@ impl EnvManager {
 
     /// Filter variables by pattern.
     pub fn filter_by_pattern(&self, pattern: &str) -> HashMap<String, String> {
-        let regex = regex::Regex::new(pattern).unwrap_or_else(|_| {
-            regex::Regex::new(&regex::escape(pattern)).unwrap()
-        });
+        let regex = regex::Regex::new(pattern)
+            .unwrap_or_else(|_| regex::Regex::new(&regex::escape(pattern)).unwrap());
 
         self.variables
             .iter()
@@ -212,8 +212,9 @@ fn parse_env_line(line: &str) -> Result<Option<(String, String)>> {
         }
 
         // Handle quoted values
-        if (value.starts_with('"') && value.ends_with('"')) ||
-           (value.starts_with('\'') && value.ends_with('\'')) {
+        if (value.starts_with('"') && value.ends_with('"'))
+            || (value.starts_with('\'') && value.ends_with('\''))
+        {
             // Remove quotes and unescape
             value = value[1..value.len() - 1].to_string();
             value = unescape_string(&value);

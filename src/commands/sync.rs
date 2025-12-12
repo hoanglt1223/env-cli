@@ -1,7 +1,7 @@
 //! Advanced sync command implementation for EC-03.
 
 use crate::error::Result;
-use crate::sync::{EnvironmentSync, SyncConfig, ConflictResolution};
+use crate::sync::{ConflictResolution, EnvironmentSync, SyncConfig};
 use std::path::PathBuf;
 
 /// Sync environments safely with advanced conflict detection and resolution.
@@ -40,11 +40,20 @@ pub async fn execute(source: String, target: String, yes: bool) -> Result<()> {
                 crate::sync::ChangeType::Remove => "➖",
                 crate::sync::ChangeType::Conflict => "⚠️",
             };
-            println!("  {} {}: '{}' -> '{}'",
+            println!(
+                "  {} {}: '{}' -> '{}'",
                 change_icon,
                 change.variable,
-                if change.old_value.is_empty() { "(empty)" } else { &change.old_value },
-                if change.new_value.is_empty() { "(empty)" } else { &change.new_value }
+                if change.old_value.is_empty() {
+                    "(empty)"
+                } else {
+                    &change.old_value
+                },
+                if change.new_value.is_empty() {
+                    "(empty)"
+                } else {
+                    &change.new_value
+                }
             );
         }
     }
@@ -60,11 +69,20 @@ pub async fn execute(source: String, target: String, yes: bool) -> Result<()> {
                 crate::sync::ConflictType::TypeMismatch => "🔄",
                 crate::sync::ConflictType::SecurityViolation => "🚨",
             };
-            println!("  {} {}: Source='{}' vs Target='{}'",
+            println!(
+                "  {} {}: Source='{}' vs Target='{}'",
                 conflict_icon,
                 conflict.variable,
-                if conflict.source_value.is_empty() { "(empty)" } else { &conflict.source_value },
-                if conflict.target_value.is_empty() { "(empty)" } else { &conflict.target_value }
+                if conflict.source_value.is_empty() {
+                    "(empty)"
+                } else {
+                    &conflict.source_value
+                },
+                if conflict.target_value.is_empty() {
+                    "(empty)"
+                } else {
+                    &conflict.target_value
+                }
             );
         }
     }
@@ -79,7 +97,10 @@ pub async fn execute(source: String, target: String, yes: bool) -> Result<()> {
                 crate::sync::SecuritySeverity::Medium => "⚠️",
                 crate::sync::SecuritySeverity::Low => "ℹ️",
             };
-            println!("  {} {}: {}", severity_icon, violation.variable, violation.description);
+            println!(
+                "  {} {}: {}",
+                severity_icon, violation.variable, violation.description
+            );
         }
     }
 
@@ -90,7 +111,10 @@ pub async fn execute(source: String, target: String, yes: bool) -> Result<()> {
 
     // Confirmation prompt
     if !yes {
-        println!("\n🤔 Estimated sync duration: {:?}", dry_run_result.estimated_duration);
+        println!(
+            "\n🤔 Estimated sync duration: {:?}",
+            dry_run_result.estimated_duration
+        );
         println!("💡 A backup will be created before sync.");
 
         print!("Proceed with synchronization? [y/N]: ");
@@ -110,13 +134,21 @@ pub async fn execute(source: String, target: String, yes: bool) -> Result<()> {
     println!("\n🚀 Starting synchronization...");
 
     // Perform actual synchronization
-    let sync_result = sync_engine.sync_environments(&source_path, &target_path).await?;
+    let sync_result = sync_engine
+        .sync_environments(&source_path, &target_path)
+        .await?;
 
     // Display results
     println!("✅ Synchronization completed successfully!");
     println!("📊 Sync Results:");
-    println!("  - Variables synced: {}", sync_result.synced_variables.len());
-    println!("  - Conflicts resolved: {}", sync_result.conflicts_resolved.len());
+    println!(
+        "  - Variables synced: {}",
+        sync_result.synced_variables.len()
+    );
+    println!(
+        "  - Conflicts resolved: {}",
+        sync_result.conflicts_resolved.len()
+    );
     println!("  - Duration: {:?}", sync_result.duration);
     println!("  - Backup created: {}", sync_result.backup_created);
 

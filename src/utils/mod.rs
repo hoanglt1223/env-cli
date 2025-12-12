@@ -18,8 +18,7 @@ pub fn ensure_dir(path: &PathBuf) -> Result<()> {
 
 /// Read file contents as string.
 pub fn read_file(path: &PathBuf) -> Result<String> {
-    std::fs::read_to_string(path)
-        .map_err(|e| crate::error::EnvCliError::FileSystem(e.to_string()))
+    std::fs::read_to_string(path).map_err(|e| crate::error::EnvCliError::FileSystem(e.to_string()))
 }
 
 /// Write string to file.
@@ -28,8 +27,7 @@ pub fn write_file(path: &PathBuf, content: &str) -> Result<()> {
         ensure_dir(&parent.to_path_buf())?;
     }
 
-    std::fs::write(path, content)
-        .map_err(|e| crate::error::EnvCliError::FileSystem(e.to_string()))
+    std::fs::write(path, content).map_err(|e| crate::error::EnvCliError::FileSystem(e.to_string()))
 }
 
 /// Check if a path exists.
@@ -40,7 +38,8 @@ pub fn path_exists(path: &PathBuf) -> bool {
 /// Generate a random secure string.
 pub fn generate_secret(length: usize) -> String {
     use rand::Rng;
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    const CHARSET: &[u8] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
 
     let mut rng = rand::thread_rng();
     (0..length)
@@ -73,7 +72,10 @@ pub fn format_bytes(bytes: u64) -> String {
 pub fn validate_env_name(name: &str) -> bool {
     !name.is_empty()
         && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-        && name.chars().next().map_or(false, |c| c.is_ascii_alphabetic())
+        && name
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_ascii_alphabetic())
 }
 
 /// Get user home directory.
@@ -91,7 +93,8 @@ pub fn confirm(message: &str) -> Result<bool> {
     println!("{} [y/N]", message);
 
     let mut input = String::new();
-    std::io::stdin().read_line(&mut input)
+    std::io::stdin()
+        .read_line(&mut input)
         .map_err(|e| crate::error::EnvCliError::Io(e))?;
 
     let input = input.trim().to_lowercase();
@@ -101,14 +104,16 @@ pub fn confirm(message: &str) -> Result<bool> {
 /// Create a backup of a file.
 pub fn backup_file(path: &PathBuf) -> Result<PathBuf> {
     if !path.exists() {
-        return Err(crate::error::EnvCliError::FileSystem(
-            format!("Cannot backup non-existent file: {}", path.display())
-        ));
+        return Err(crate::error::EnvCliError::FileSystem(format!(
+            "Cannot backup non-existent file: {}",
+            path.display()
+        )));
     }
 
-    let backup_path = path.with_extension(format!("{}.backup", path.extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("bak")));
+    let backup_path = path.with_extension(format!(
+        "{}.backup",
+        path.extension().and_then(|s| s.to_str()).unwrap_or("bak")
+    ));
 
     std::fs::copy(path, &backup_path)?;
     Ok(backup_path)
@@ -149,6 +154,8 @@ mod tests {
         assert_eq!(secret.len(), 32);
 
         // Ensure it contains only valid characters
-        assert!(secret.chars().all(|c| c.is_ascii_alphanumeric() || "!@#$%^&*".contains(c)));
+        assert!(secret
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "!@#$%^&*".contains(c)));
     }
 }

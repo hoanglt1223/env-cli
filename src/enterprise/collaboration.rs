@@ -3,13 +3,15 @@
 //! This module implements multi-user environment sharing, conflict resolution,
 //! and collaborative features for enterprise teams.
 
-use std::collections::{HashMap, HashSet};
+#![allow(unused_imports, unused_variables, dead_code)]
+
+use crate::enterprise::{EncryptedValue, EnvironmentId, UserId, WorkspaceId};
+use crate::error::{EnvCliError, Result};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
-use anyhow::Result;
-use crate::enterprise::{UserId, WorkspaceId, EnvironmentId, EncryptedValue, Outcome};
-use crate::error::EnvCliError;
 
 /// Team workspace for collaborative environment management
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,11 +38,7 @@ pub struct TeamWorkspace {
 
 impl TeamWorkspace {
     /// Create a new team workspace
-    pub fn new(
-        name: String,
-        description: String,
-        created_by: UserId,
-    ) -> Self {
+    pub fn new(name: String, description: String, created_by: UserId) -> Self {
         let workspace_id = Uuid::new_v4();
         let now = Utc::now();
 
@@ -69,9 +67,11 @@ impl TeamWorkspace {
         self.members.retain(|m| m.user_id != user_id);
 
         if self.members.len() == initial_len {
-            return Err(EnvCliError::CollaborationError(
-                format!("User {} is not a member of this workspace", user_id)
-            ).into());
+            return Err(EnvCliError::CollaborationError(format!(
+                "User {} is not a member of this workspace",
+                user_id
+            ))
+            .into());
         }
 
         self.updated_at = Utc::now();
@@ -100,9 +100,11 @@ impl TeamWorkspace {
         self.environments.retain(|e| e.id != environment_id);
 
         if self.environments.len() == initial_len {
-            return Err(EnvCliError::CollaborationError(
-                format!("Environment {} is not in this workspace", environment_id)
-            ).into());
+            return Err(EnvCliError::CollaborationError(format!(
+                "Environment {} is not in this workspace",
+                environment_id
+            ))
+            .into());
         }
 
         self.updated_at = Utc::now();
@@ -157,7 +159,7 @@ impl TeamMember {
             username,
             email,
             display_name,
-            role,
+            role: role.clone(),
             permissions: role.default_permissions(),
             joined_at: now,
             last_active_at: now,
@@ -224,12 +226,8 @@ impl WorkspaceRole {
                 WorkspacePermission::ManageEnvironments,
                 WorkspacePermission::ViewAuditLogs,
             ],
-            WorkspaceRole::Viewer => vec![
-                WorkspacePermission::ViewEnvironments,
-            ],
-            WorkspaceRole::Guest => vec![
-                WorkspacePermission::ViewEnvironments,
-            ],
+            WorkspaceRole::Viewer => vec![WorkspacePermission::ViewEnvironments],
+            WorkspaceRole::Guest => vec![WorkspacePermission::ViewEnvironments],
         }
     }
 
@@ -297,11 +295,7 @@ pub struct SharedEnvironment {
 
 impl SharedEnvironment {
     /// Create a new shared environment
-    pub fn new(
-        name: String,
-        description: String,
-        created_by: UserId,
-    ) -> Self {
+    pub fn new(name: String, description: String, created_by: UserId) -> Self {
         let env_id = Uuid::new_v4();
         let now = Utc::now();
 
@@ -332,7 +326,7 @@ impl SharedEnvironment {
 
     /// Remove an owner from the environment
     pub fn remove_owner(&mut self, user_id: UserId) {
-        self.owners.retain(|id| id != user_id);
+        self.owners.retain(|id| *id != user_id);
         self.updated_at = Utc::now();
     }
 
@@ -346,7 +340,7 @@ impl SharedEnvironment {
 
     /// Remove an editor from the environment
     pub fn remove_editor(&mut self, user_id: UserId) {
-        self.editors.retain(|id| id != user_id);
+        self.editors.retain(|id| *id != user_id);
         self.updated_at = Utc::now();
     }
 
@@ -360,7 +354,7 @@ impl SharedEnvironment {
 
     /// Remove a viewer from the environment
     pub fn remove_viewer(&mut self, user_id: UserId) {
-        self.viewers.retain(|id| id != user_id);
+        self.viewers.retain(|id| *id != user_id);
         self.updated_at = Utc::now();
     }
 
@@ -371,9 +365,9 @@ impl SharedEnvironment {
 
     /// Check if a user has read access to the environment
     pub fn can_read(&self, user_id: UserId) -> bool {
-        self.owners.contains(&user_id) ||
-        self.editors.contains(&user_id) ||
-        self.viewers.contains(&user_id)
+        self.owners.contains(&user_id)
+            || self.editors.contains(&user_id)
+            || self.viewers.contains(&user_id)
     }
 
     /// Add a variable change to the history
@@ -390,11 +384,13 @@ impl SharedEnvironment {
 
     /// Approve a pending change
     pub fn approve_pending_change(&mut self, change_id: Uuid, approved_by: UserId) -> Result<()> {
-        let change_index = self.pending_changes.iter()
+        let change_index = self
+            .pending_changes
+            .iter()
             .position(|c| c.id == change_id)
-            .ok_or_else(|| EnvCliError::CollaborationError(
-                format!("Pending change {} not found", change_id)
-            ))?;
+            .ok_or_else(|| {
+                EnvCliError::CollaborationError(format!("Pending change {} not found", change_id))
+            })?;
 
         let mut pending_change = self.pending_changes.remove(change_index);
         pending_change.status = ChangeStatus::Approved;
@@ -423,12 +419,19 @@ impl SharedEnvironment {
     }
 
     /// Reject a pending change
-    pub fn reject_pending_change(&mut self, change_id: Uuid, rejected_by: UserId, reason: String) -> Result<()> {
-        let change_index = self.pending_changes.iter()
+    pub fn reject_pending_change(
+        &mut self,
+        change_id: Uuid,
+        rejected_by: UserId,
+        reason: String,
+    ) -> Result<()> {
+        let change_index = self
+            .pending_changes
+            .iter()
             .position(|c| c.id == change_id)
-            .ok_or_else(|| EnvCliError::CollaborationError(
-                format!("Pending change {} not found", change_id)
-            ))?;
+            .ok_or_else(|| {
+                EnvCliError::CollaborationError(format!("Pending change {} not found", change_id))
+            })?;
 
         let mut pending_change = self.pending_changes.remove(change_index);
         pending_change.status = ChangeStatus::Rejected;
@@ -443,25 +446,31 @@ impl SharedEnvironment {
             VariableChange::Add { key, value } => {
                 // In a real implementation, this would encrypt the value
                 // For now, we'll store it as-is (this is a placeholder)
-                self.encrypted_variables.insert(key.clone(), EncryptedValue {
-                    ciphertext: base64::encode(value.as_bytes()),
-                    nonce: "dummy_nonce".to_string(),
-                    tag: "dummy_tag".to_string(),
-                    key_id: "dummy_key".to_string(),
-                    algorithm: "AES-256-GCM".to_string(),
-                    encrypted_at: Utc::now(),
-                });
+                self.encrypted_variables.insert(
+                    key.clone(),
+                    EncryptedValue {
+                        ciphertext: BASE64.encode(value.as_bytes()),
+                        nonce: "dummy_nonce".to_string(),
+                        tag: "dummy_tag".to_string(),
+                        key_id: "dummy_key".to_string(),
+                        algorithm: "AES-256-GCM".to_string(),
+                        encrypted_at: Utc::now(),
+                    },
+                );
             }
             VariableChange::Update { key, new_value, .. } => {
                 // Update encrypted value
-                self.encrypted_variables.insert(key.clone(), EncryptedValue {
-                    ciphertext: base64::encode(new_value.as_bytes()),
-                    nonce: "dummy_nonce".to_string(),
-                    tag: "dummy_tag".to_string(),
-                    key_id: "dummy_key".to_string(),
-                    algorithm: "AES-256-GCM".to_string(),
-                    encrypted_at: Utc::now(),
-                });
+                self.encrypted_variables.insert(
+                    key.clone(),
+                    EncryptedValue {
+                        ciphertext: BASE64.encode(new_value.as_bytes()),
+                        nonce: "dummy_nonce".to_string(),
+                        tag: "dummy_tag".to_string(),
+                        key_id: "dummy_key".to_string(),
+                        algorithm: "AES-256-GCM".to_string(),
+                        encrypted_at: Utc::now(),
+                    },
+                );
             }
             VariableChange::Delete { key } => {
                 self.encrypted_variables.remove(key);
@@ -508,10 +517,7 @@ impl Default for EnvironmentMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VariableChange {
     /// Add a new variable
-    Add {
-        key: String,
-        value: String,
-    },
+    Add { key: String, value: String },
     /// Update an existing variable
     Update {
         key: String,
@@ -519,9 +525,7 @@ pub enum VariableChange {
         new_value: String,
     },
     /// Delete a variable
-    Delete {
-        key: String,
-    },
+    Delete { key: String },
 }
 
 impl VariableChange {
@@ -675,7 +679,10 @@ impl Default for NotificationSettings {
         Self {
             enabled: true,
             channels: vec![NotificationChannel::Email],
-            events: vec![NotificationEvent::EnvironmentChanged, NotificationEvent::MemberAdded],
+            events: vec![
+                NotificationEvent::EnvironmentChanged,
+                NotificationEvent::MemberAdded,
+            ],
         }
     }
 }
@@ -728,7 +735,8 @@ impl ConflictResolver {
     ) -> Result<Vec<EnvironmentChange>> {
         match self.strategy {
             ConflictResolutionStrategy::LastWriterWins => {
-                self.resolve_by_timestamp(local_changes, remote_changes).await
+                self.resolve_by_timestamp(local_changes, remote_changes)
+                    .await
             }
             ConflictResolutionStrategy::Manual => {
                 // Return conflicts for manual resolution
@@ -738,10 +746,12 @@ impl ConflictResolver {
                 Ok(conflicts)
             }
             ConflictResolutionStrategy::MergeWithConflictMarkers => {
-                self.resolve_with_markers(local_changes, remote_changes).await
+                self.resolve_with_markers(local_changes, remote_changes)
+                    .await
             }
             ConflictResolutionStrategy::AutomaticBasedOnTimestamp => {
-                self.resolve_by_timestamp(local_changes, remote_changes).await
+                self.resolve_by_timestamp(local_changes, remote_changes)
+                    .await
             }
         }
     }

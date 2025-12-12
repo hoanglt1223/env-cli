@@ -1,11 +1,11 @@
 //! Validate command implementation.
 
-use crate::config::{load_config, default_config_path};
+use crate::config::{default_config_path, load_config};
 use crate::env::EnvManager;
 use crate::error::{EnvCliError, Result};
-use crate::scan;
-use std::path::PathBuf;
 use regex::Regex;
+// use std::fs;
+use std::path::PathBuf;
 
 /// Validation result information.
 #[derive(Debug)]
@@ -26,7 +26,7 @@ pub async fn execute(env: String, check_unused: bool) -> Result<()> {
     let env_dir = PathBuf::from(".env");
     if !env_dir.exists() {
         return Err(EnvCliError::Config(
-            "Not an env-cli project. Run 'env init' first.".to_string()
+            "Not an env-cli project. Run 'env init' first.".to_string(),
         ));
     }
 
@@ -42,13 +42,22 @@ pub async fn execute(env: String, check_unused: bool) -> Result<()> {
     };
 
     // Validate environment exists
-    let target_env = config.environments.iter()
+    let target_env = config
+        .environments
+        .iter()
         .find(|e| e.name == env_name)
-        .ok_or_else(|| EnvCliError::Environment(format!(
-            "Environment '{}' not found. Available environments: {}",
-            env_name,
-            config.environments.iter().map(|e| &e.name).collect::<Vec<_>>().join(", ")
-        )))?;
+        .ok_or_else(|| {
+            EnvCliError::Environment(format!(
+                "Environment '{}' not found. Available environments: {}",
+                env_name,
+                config
+                    .environments
+                    .iter()
+                    .map(|e| e.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
+        })?;
 
     println!("Loading environment: {}", target_env.name);
 
@@ -56,7 +65,9 @@ pub async fn execute(env: String, check_unused: bool) -> Result<()> {
     let env_file = if let Some(file) = &target_env.file {
         file.clone()
     } else {
-        env_dir.join("environments").join(format!("{}.env", env_name))
+        env_dir
+            .join("environments")
+            .join(format!("{}.env", env_name))
     };
 
     if !env_file.exists() {
@@ -89,7 +100,9 @@ pub async fn execute(env: String, check_unused: bool) -> Result<()> {
         if !missing.is_empty() {
             result.required_passed = false;
             for var in &missing {
-                result.format_errors.push(format!("Missing required variable: {}", var));
+                result
+                    .format_errors
+                    .push(format!("Missing required variable: {}", var));
             }
         }
     }
@@ -124,33 +137,27 @@ pub async fn execute(env: String, check_unused: bool) -> Result<()> {
     if check_unused {
         println!("Scanning for unused variables...");
         match crate::scan::CodeScanner::new() {
-            Ok(scanner) => {
-                match scanner.scan_directory(&PathBuf::from(".")).await {
-                    Ok(usage_info) => {
-                        let used_vars: std::collections::HashSet<String> = usage_info
-                            .into_iter()
-                            .map(|usage| usage.name)
-                            .collect();
+            Ok(scanner) => match scanner.scan_directory(&PathBuf::from(".")).await {
+                Ok(usage_info) => {
+                    let used_vars: std::collections::HashSet<String> =
+                        usage_info.into_iter().map(|usage| usage.name).collect();
 
-                        for (var_name, _) in env_manager.list() {
-                            if !used_vars.contains(var_name) {
-                                result.unused_variables.push(var_name.clone());
-                            }
+                    for (var_name, _) in env_manager.list() {
+                        if !used_vars.contains(var_name) {
+                            result.unused_variables.push(var_name.clone());
                         }
                     }
-                    Err(e) => {
-                        result.security_warnings.push(format!(
-                            "Could not scan for unused variables: {}",
-                            e
-                        ));
-                    }
                 }
-            }
+                Err(e) => {
+                    result
+                        .security_warnings
+                        .push(format!("Could not scan for unused variables: {}", e));
+                }
+            },
             Err(e) => {
-                result.security_warnings.push(format!(
-                    "Could not initialize code scanner: {}",
-                    e
-                ));
+                result
+                    .security_warnings
+                    .push(format!("Could not initialize code scanner: {}", e));
             }
         }
     }
@@ -159,8 +166,13 @@ pub async fn execute(env: String, check_unused: bool) -> Result<()> {
     print_validation_results(&env_name, &result);
 
     // Return error if validation failed
-    if !result.required_passed || !result.format_errors.is_empty() || !result.security_errors.is_empty() {
-        return Err(EnvCliError::Validation("Environment validation failed".to_string()));
+    if !result.required_passed
+        || !result.format_errors.is_empty()
+        || !result.security_errors.is_empty()
+    {
+        return Err(EnvCliError::Validation(
+            "Environment validation failed".to_string(),
+        ));
     }
 
     Ok(())
@@ -171,16 +183,21 @@ fn get_current_environment() -> Result<String> {
     let current_path = PathBuf::from(".env/.current");
 
     if !current_path.exists() {
-        return Err(EnvCliError::Environment("No current environment set. Use 'env switch <environment>' first.".to_string()));
+        return Err(EnvCliError::Environment(
+            "No current environment set. Use 'env switch <environment>' first.".to_string(),
+        ));
     }
 
     #[cfg(unix)]
     {
         use std::os::unix::fs;
-        let target = fs::read_link(&current_path)?;
+        let target = std::fs::read_link(&current_path)?;
 
         // Extract environment name from path like "environments/development.env"
-        if let Some(file_name) = target.file_name().and_then(|n| n.to_str()) {
+        if let Some(file_name) = target
+            .file_name()
+            .and_then(|n: &std::ffi::OsStr| n.to_str())
+        {
             if let Some(env_name) = file_name.strip_suffix(".env") {
                 return Ok(env_name.to_string());
             }
@@ -189,18 +206,22 @@ fn get_current_environment() -> Result<String> {
 
     #[cfg(windows)]
     {
-        use std::os::windows::fs;
-        let target = fs::read_link(&current_path)?;
+        let target = std::fs::read_link(&current_path)?;
 
         // Extract environment name from path like "environments\development.env"
-        if let Some(file_name) = target.file_name().and_then(|n| n.to_str()) {
+        if let Some(file_name) = target
+            .file_name()
+            .and_then(|n: &std::ffi::OsStr| n.to_str())
+        {
             if let Some(env_name) = file_name.strip_suffix(".env") {
                 return Ok(env_name.to_string());
             }
         }
     }
 
-    Err(EnvCliError::Environment("Unable to determine current environment".to_string()))
+    Err(EnvCliError::Environment(
+        "Unable to determine current environment".to_string(),
+    ))
 }
 
 /// Validate security constraints.
@@ -231,14 +252,14 @@ fn validate_security(
         }
 
         // Additional security checks
-        if var_name.to_lowercase().contains("password") ||
-           var_name.to_lowercase().contains("secret") ||
-           var_name.to_lowercase().contains("key") {
+        if var_name.to_lowercase().contains("password")
+            || var_name.to_lowercase().contains("secret")
+            || var_name.to_lowercase().contains("key")
+        {
             if var_value.is_empty() {
-                result.security_errors.push(format!(
-                    "Secret variable '{}' cannot be empty",
-                    var_name
-                ));
+                result
+                    .security_errors
+                    .push(format!("Secret variable '{}' cannot be empty", var_name));
             }
         }
     }
@@ -277,7 +298,9 @@ fn is_insecure_value(value: &str, security_config: &crate::config::SecurityConfi
 
     // Check for special characters (if required)
     if security_config.require_special_chars.unwrap_or(false) {
-        let has_special = value.chars().any(|c| "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(c));
+        let has_special = value
+            .chars()
+            .any(|c| "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(c));
         if !has_special {
             return true;
         }
@@ -302,7 +325,10 @@ fn print_validation_results(env_name: &str, result: &ValidationResult) {
     if result.format_errors.is_empty() {
         println!("  ✓ Variable formats: All valid");
     } else {
-        println!("  ✗ Variable formats: {} errors", result.format_errors.len());
+        println!(
+            "  ✗ Variable formats: {} errors",
+            result.format_errors.len()
+        );
         for error in &result.format_errors {
             println!("    - {}", error);
         }
@@ -313,14 +339,20 @@ fn print_validation_results(env_name: &str, result: &ValidationResult) {
         println!("  ✓ Security check: Passed");
     } else {
         if !result.security_errors.is_empty() {
-            println!("  ✗ Security check: {} errors", result.security_errors.len());
+            println!(
+                "  ✗ Security check: {} errors",
+                result.security_errors.len()
+            );
             for error in &result.security_errors {
                 println!("    - {}", error);
             }
         }
 
         if !result.security_warnings.is_empty() {
-            println!("  ⚠ Security warnings: {} warnings", result.security_warnings.len());
+            println!(
+                "  ⚠ Security warnings: {} warnings",
+                result.security_warnings.len()
+            );
             for warning in &result.security_warnings {
                 println!("    - {}", warning);
             }
@@ -329,16 +361,19 @@ fn print_validation_results(env_name: &str, result: &ValidationResult) {
 
     // Unused variables
     if !result.unused_variables.is_empty() {
-        println!("  ⚠ Unused variables: {} found", result.unused_variables.len());
+        println!(
+            "  ⚠ Unused variables: {} found",
+            result.unused_variables.len()
+        );
         for var in &result.unused_variables {
             println!("    - {} (consider removing if not needed)", var);
         }
     }
 
     // Overall status
-    let is_valid = result.required_passed &&
-        result.format_errors.is_empty() &&
-        result.security_errors.is_empty();
+    let is_valid = result.required_passed
+        && result.format_errors.is_empty()
+        && result.security_errors.is_empty();
 
     if is_valid {
         println!("\n✓ Environment '{}' is valid!", env_name);

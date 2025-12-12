@@ -1,6 +1,6 @@
 //! Initialize command implementation.
 
-use crate::config::{Config, Environment, default_config_path};
+use crate::config::{default_config_path, Config, Environment};
 use crate::error::{EnvCliError, Result};
 use std::path::PathBuf;
 
@@ -14,7 +14,7 @@ pub async fn execute(force: bool) -> Result<()> {
 
     if env_dir.exists() && !force {
         return Err(EnvCliError::AlreadyInitialized(
-            "Project already has .env directory. Use --force to reinitialize.".to_string()
+            "Project already has .env directory. Use --force to reinitialize.".to_string(),
         ));
     }
 

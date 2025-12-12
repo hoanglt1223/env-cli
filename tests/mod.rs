@@ -5,11 +5,9 @@
 
 pub mod common;
 
-mod integration_tests;
 mod advanced_integration_tests;
 mod edge_cases_tests;
+mod integration_tests;
 
 // Re-export commonly used test utilities for convenience
-pub use common::{
-    TestProjectBuilder, TestProject, TestConfig, EnvVarGenerator, assertions,
-};
+pub use common::{assertions, EnvVarGenerator, TestConfig, TestProject, TestProjectBuilder};

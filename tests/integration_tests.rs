@@ -35,7 +35,8 @@ fn main() {
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
 }
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         project_dir.join("src/lib.rs"),
@@ -56,7 +57,8 @@ pub struct AppConfig {
     pub log_level: String,
 }
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         project_dir.join("tests/integration_tests.rs"),
@@ -69,7 +71,8 @@ fn test_with_test_env() {
     assert_eq!(env::var("TEST_ENV").unwrap(), "test");
 }
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         project_dir.join("config/app.json"),
@@ -79,7 +82,8 @@ fn test_with_test_env() {
     "debug": "${DEBUG:false}",
     "port": "${PORT:8080}"
 }"#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create a JavaScript/TypeScript file to demonstrate cross-language support
     fs::write(
@@ -96,7 +100,8 @@ module.exports = {
     port: process.env.PORT || 3000
 };
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     temp_dir
 }
@@ -118,7 +123,8 @@ APP_SECRET=dev_secret_key
 LOG_LEVEL=debug
 NODE_ENV=development
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Production environment
     fs::write(
@@ -133,7 +139,8 @@ APP_SECRET=prod_super_secret_key
 LOG_LEVEL=info
 NODE_ENV=production
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Test environment
     fs::write(
@@ -148,7 +155,8 @@ APP_SECRET=test_secret_key
 LOG_LEVEL=error
 NODE_ENV=test
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 /// Helper function to create a configuration file
@@ -187,7 +195,8 @@ required = ["DATABASE_URL", "API_KEY", "APP_SECRET"]
 sensitive_patterns = [".*KEY.*", ".*SECRET.*", ".*PASSWORD.*"]
 min_secret_length = 16
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 // ============================================================================
@@ -225,8 +234,8 @@ fn test_cli_no_command() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("env")?;
 
     cmd.assert()
-        .failure()  // Should fail when no command provided
-        .stderr(predicates::str::contains("required")));
+        .failure() // Should fail when no command provided
+        .stderr(predicates::str::contains("required"));
 
     Ok(())
 }
@@ -243,7 +252,8 @@ fn test_init_command() -> Result<(), Box<dyn std::error::Error>> {
     cmd.current_dir(project_dir.path());
     cmd.arg("init");
 
-    let assert = cmd.assert()
+    let assert = cmd
+        .assert()
         .success()
         .stdout(predicates::str::contains("Initializing"))
         .stdout(predicates::str::contains("project"));
@@ -280,7 +290,11 @@ fn test_init_command_already_initialized() -> Result<(), Box<dyn std::error::Err
 
     // Pre-initialize the project
     fs::create_dir_all(project_dir.path().join(".env")).unwrap();
-    fs::write(project_dir.path().join(".env/config.toml"), "# Existing config").unwrap();
+    fs::write(
+        project_dir.path().join(".env/config.toml"),
+        "# Existing config",
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(project_dir.path());
@@ -370,7 +384,11 @@ fn test_scan_command_include_hidden() -> Result<(), Box<dyn std::error::Error>> 
     let project_dir = create_test_project();
 
     // Create a hidden file with environment variables
-    fs::write(project_dir.path().join(".hidden_config"), "SECRET_KEY=hidden_value").unwrap();
+    fs::write(
+        project_dir.path().join(".hidden_config"),
+        "SECRET_KEY=hidden_value",
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(project_dir.path());
@@ -488,8 +506,7 @@ fn test_generate_command_custom_output() -> Result<(), Box<dyn std::error::Error
     cmd.current_dir(project_dir.path());
     cmd.arg("generate").args(["--output", "custom.env.example"]);
 
-    cmd.assert()
-        .success();
+    cmd.assert().success();
 
     // Verify that the custom output file was created
     assert!(project_dir.path().join("custom.env.example").exists());
@@ -708,10 +725,9 @@ fn test_scan_nonexistent_directory() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("env")?;
     cmd.arg("scan").arg("/nonexistent/directory");
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("not found")
-            .or(predicates::str::contains("No such file")));
+    cmd.assert().failure().stderr(
+        predicates::str::contains("not found").or(predicates::str::contains("No such file")),
+    );
 
     Ok(())
 }
@@ -725,16 +741,21 @@ fn test_generate_to_readonly_directory() -> Result<(), Box<dyn std::error::Error
 
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(project_dir.path());
-    cmd.arg("generate").args(["--output", readonly_path.join("test.env.example").to_str().unwrap()]);
+    cmd.arg("generate").args([
+        "--output",
+        readonly_path.join("test.env.example").to_str().unwrap(),
+    ]);
 
     // This might succeed or fail depending on the system, but we expect some reasonable behavior
     let assert = cmd.assert();
 
     // If the command fails, it should provide a helpful error message
     if !assert.get_output().status.success() {
-        assert.stderr(predicates::str::contains("permission")
-            .or(predicates::str::contains("access"))
-            .or(predicates::str::contains("directory")));
+        assert.stderr(
+            predicates::str::contains("permission")
+                .or(predicates::str::contains("access"))
+                .or(predicates::str::contains("directory")),
+        );
     }
 
     Ok(())
@@ -818,19 +839,23 @@ fn test_scan_large_project() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create many files to simulate a large project
     for i in 0..50 {
-        let file_content = format!(r#"
+        let file_content = format!(
+            r#"
 use std::env;
 
 fn function_{}() {{
     let var = env::var("TEST_VAR_{}").unwrap_or_else(|_| "default".to_string());
     println!("{{}}", var);
 }}
-"#, i, i);
+"#,
+            i, i
+        );
 
         fs::write(
             project_dir.path().join(format!("src/module_{}.rs", i)),
             file_content,
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     let mut cmd = Command::cargo_bin("env")?;

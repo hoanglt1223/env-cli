@@ -2,7 +2,7 @@
 
 use crate::cli::OutputFormat;
 use crate::error::Result;
-use crate::scan::{CodeScanner, ScanResult};
+use crate::scan::CodeScanner;
 use std::path::PathBuf;
 
 /// Scan code for environment variable usage with advanced features.
@@ -43,11 +43,7 @@ pub async fn execute(path: PathBuf, format: OutputFormat, hidden: bool) -> Resul
         variables.sort_by(|a, b| a.name.cmp(&b.name));
 
         for usage in variables {
-            let display_value = if hidden {
-                "***HIDDEN***"
-            } else {
-                "empty"
-            };
+            let _display_value = if hidden { "***HIDDEN***" } else { "empty" };
 
             if usage.files.len() == 1 {
                 println!("  {} - Used in {}", usage.name, usage.files[0]);
@@ -58,9 +54,11 @@ pub async fn execute(path: PathBuf, format: OutputFormat, hidden: bool) -> Resul
                         println!("    - {}", file);
                     }
                 } else if !hidden {
-                    println!("    - {} and {} more",
+                    println!(
+                        "    - {} and {} more",
                         usage.files[0..2].join(", "),
-                        usage.files.len() - 2);
+                        usage.files.len() - 2
+                    );
                 }
             }
         }
@@ -76,7 +74,10 @@ pub async fn execute(path: PathBuf, format: OutputFormat, hidden: bool) -> Resul
                 crate::scan::SecuritySeverity::Medium => "⚠️",
                 crate::scan::SecuritySeverity::Low => "ℹ️",
             };
-            println!("  {} {}: {}:{}", severity_icon, issue.message, issue.file, issue.line);
+            println!(
+                "  {} {}: {}:{}",
+                severity_icon, issue.message, issue.file, issue.line
+            );
         }
     }
 

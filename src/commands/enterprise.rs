@@ -1,15 +1,17 @@
 //! Enterprise management commands
 
-use clap::{Args, Subcommand};
-use anyhow::Result;
-use crate::enterprise::{
-    auth::{AuthContext, AuthProvider, AuthCredentials},
-    rbac::{RbacEngine, Role, Permission, UserAssignment},
-    config::{EnterpriseConfigManager, EnterpriseConfig},
-    audit::{AuditLogger, AuditEvent, AuditSeverity, AuditCategory},
-};
+#![allow(unused_imports, unused_variables, dead_code)]
+
 use crate::commands::CommandResult;
+use crate::enterprise::{
+    audit::{AuditCategory, AuditEvent, AuditLogger, AuditSeverity},
+    auth::{AuthContext, AuthCredentials, AuthProvider},
+    config::{EnterpriseConfig, EnterpriseConfigManager},
+    rbac::{Permission, RbacEngine, Role, UserAssignment},
+};
 use crate::error::EnvCliError;
+use crate::error::Result;
+use clap::{Args, Subcommand};
 
 /// Enterprise management commands
 #[derive(Args)]
@@ -488,9 +490,7 @@ pub struct RotateKeysArgs {
 }
 
 /// Execute enterprise command
-pub async fn execute_enterprise_command(
-    command: EnterpriseCommand,
-) -> CommandResult {
+pub async fn execute_enterprise_command(command: EnterpriseCommand) -> CommandResult {
     match command.subcommand {
         EnterpriseSubcommand::Init(args) => init_enterprise(args).await,
         EnterpriseSubcommand::Status(args) => show_enterprise_status(args).await,
@@ -528,11 +528,25 @@ async fn init_enterprise(args: InitEnterpriseArgs) -> CommandResult {
 
     println!("✅ Enterprise features initialized successfully");
     println!("   Workspace: {}", config_manager.config().workspace_name);
-    println!("   Encryption: {}", if config_manager.config().security.encryption_at_rest { "Enabled" } else { "Disabled" });
-    println!("   Audit Logging: {}", if config_manager.config().audit.log_all_actions { "Enabled" } else { "Disabled" });
+    println!(
+        "   Encryption: {}",
+        if config_manager.config().security.encryption_at_rest {
+            "Enabled"
+        } else {
+            "Disabled"
+        }
+    );
+    println!(
+        "   Audit Logging: {}",
+        if config_manager.config().audit.log_all_actions {
+            "Enabled"
+        } else {
+            "Disabled"
+        }
+    );
 
     if let Some(config_file) = args.config_file {
-        config_manager.save_to_file(config_file).await?;
+        config_manager.save_to_file(&config_file).await?;
         println!("   Configuration saved to: {}", config_file);
     }
 
@@ -547,24 +561,76 @@ async fn show_enterprise_status(args: StatusEnterpriseArgs) -> CommandResult {
     match args.format.as_str() {
         "json" => {
             println!("{}", serde_json::to_string_pretty(&summary)?);
-        },
+        }
         "yaml" => {
             println!("{}", serde_yaml::to_string(&summary)?);
-        },
+        }
         _ => {
             println!("🏢 Enterprise Status");
             println!("==================");
-            println!("Enterprise Features: {}", if summary.enterprise_enabled { "✅ Enabled" } else { "❌ Disabled" });
+            println!(
+                "Enterprise Features: {}",
+                if summary.enterprise_enabled {
+                    "✅ Enabled"
+                } else {
+                    "❌ Disabled"
+                }
+            );
             println!("Workspace: {}", summary.workspace_name);
-            println!("Encryption: {}", if summary.encryption_enabled { "✅ Enabled" } else { "❌ Disabled" });
-            println!("Audit Logging: {}", if summary.audit_enabled { "✅ Enabled" } else { "❌ Disabled" });
-            println!("SSO Configured: {}", if summary.sso_configured { "✅ Yes" } else { "❌ No" });
-            println!("LDAP Configured: {}", if summary.ldap_configured { "✅ Yes" } else { "❌ No" });
-            println!("Backup Enabled: {}", if summary.backup_enabled { "✅ Yes" } else { "❌ No" });
-            println!("Notifications: {}", if summary.notifications_enabled { "✅ Enabled" } else { "❌ Disabled" });
+            println!(
+                "Encryption: {}",
+                if summary.encryption_enabled {
+                    "✅ Enabled"
+                } else {
+                    "❌ Disabled"
+                }
+            );
+            println!(
+                "Audit Logging: {}",
+                if summary.audit_enabled {
+                    "✅ Enabled"
+                } else {
+                    "❌ Disabled"
+                }
+            );
+            println!(
+                "SSO Configured: {}",
+                if summary.sso_configured {
+                    "✅ Yes"
+                } else {
+                    "❌ No"
+                }
+            );
+            println!(
+                "LDAP Configured: {}",
+                if summary.ldap_configured {
+                    "✅ Yes"
+                } else {
+                    "❌ No"
+                }
+            );
+            println!(
+                "Backup Enabled: {}",
+                if summary.backup_enabled {
+                    "✅ Yes"
+                } else {
+                    "❌ No"
+                }
+            );
+            println!(
+                "Notifications: {}",
+                if summary.notifications_enabled {
+                    "✅ Enabled"
+                } else {
+                    "❌ Disabled"
+                }
+            );
 
             if !summary.compliance_frameworks.is_empty() {
-                println!("Compliance Frameworks: {}", summary.compliance_frameworks.join(", "));
+                println!(
+                    "Compliance Frameworks: {}",
+                    summary.compliance_frameworks.join(", ")
+                );
             }
 
             if args.detailed {
@@ -583,25 +649,28 @@ async fn manage_enterprise_config(args: ConfigEnterpriseArgs) -> CommandResult {
         ConfigAction::Show => {
             let config_manager = EnterpriseConfigManager::new();
             println!("{}", serde_yaml::to_string(&config_manager.config())?);
-        },
+        }
         ConfigAction::Set(args) => {
             println!("Setting configuration: {} = {}", args.key, args.value);
             // In a real implementation, this would update the configuration
             println!("✅ Configuration updated");
-        },
+        }
         ConfigAction::Validate => {
             let config_manager = EnterpriseConfigManager::new();
             config_manager.validate()?;
             println!("✅ Configuration is valid");
-        },
+        }
         ConfigAction::Reset(args) => {
             if !args.force {
-                println!("This will reset the '{}' configuration section. Use --force to confirm.", args.section);
+                println!(
+                    "This will reset the '{}' configuration section. Use --force to confirm.",
+                    args.section
+                );
                 return Ok(());
             }
             println!("Resetting configuration section: {}", args.section);
             println!("✅ Configuration reset to defaults");
-        },
+        }
     }
 
     Ok(())
@@ -615,34 +684,34 @@ async fn manage_auth(args: AuthCommand) -> CommandResult {
             println!("Username: {:?}", args.username);
             println!("Provider: {:?}", args.provider);
             println!("✅ Login successful");
-        },
+        }
         AuthSubcommand::Logout(args) => {
             println!("🚪 Logging out from enterprise system");
             if args.all {
                 println!("Logging out from all sessions");
             }
             println!("✅ Logout successful");
-        },
+        }
         AuthSubcommand::Status => {
             println!("🔍 Authentication Status");
             println!("Status: Not logged in");
-        },
+        }
         AuthSubcommand::Refresh => {
             println!("🔄 Refreshing authentication token");
             println!("✅ Token refreshed");
-        },
+        }
         AuthSubcommand::ListProviders => {
             println!("🔧 Available Authentication Providers:");
             println!("  - Local");
             println!("  - SAML");
             println!("  - OIDC");
             println!("  - LDAP");
-        },
+        }
         AuthSubcommand::Test(args) => {
             println!("🧪 Testing authentication provider: {}", args.provider);
             println!("Username: {:?}", args.username);
             println!("✅ Authentication test successful");
-        },
+        }
     }
 
     Ok(())
@@ -655,9 +724,9 @@ async fn manage_rbac(args: RbacCommand) -> CommandResult {
             println!("👥 Listing Roles");
             match args.format.as_str() {
                 "json" => {
-                    let roles = vec![]; // Placeholder
+                    let roles: Vec<String> = vec![]; // Placeholder
                     println!("{}", serde_json::to_string_pretty(&roles)?);
-                },
+                }
                 _ => {
                     println!("Role   | Permissions");
                     println!("-------|--------------");
@@ -668,55 +737,58 @@ async fn manage_rbac(args: RbacCommand) -> CommandResult {
                     println!("guest  | Limited access");
                 }
             }
-        },
+        }
         RbacSubcommand::CreateRole(args) => {
             println!("➕ Creating role: {}", args.name);
             println!("Description: {:?}", args.description);
             println!("Permissions: {:?}", args.permissions);
             println!("✅ Role created successfully");
-        },
+        }
         RbacSubcommand::DeleteRole(args) => {
             if !args.force {
-                println!("This will delete role '{}'. Use --force to confirm.", args.name);
+                println!(
+                    "This will delete role '{}'. Use --force to confirm.",
+                    args.name
+                );
                 return Ok(());
             }
             println!("🗑️ Deleting role: {}", args.name);
             println!("✅ Role deleted successfully");
-        },
+        }
         RbacSubcommand::AssignRole(args) => {
             println!("👤 Assigning role '{}' to user '{}'", args.role, args.user);
             if let Some(expires) = args.expires {
                 println!("Expires: {}", expires);
             }
             println!("✅ Role assigned successfully");
-        },
+        }
         RbacSubcommand::RemoveRole(args) => {
             println!("🚫 Removing role '{}' from user '{}'", args.role, args.user);
             println!("✅ Role removed successfully");
-        },
+        }
         RbacSubcommand::ListUserRoles(args) => {
             println!("👤 Roles for user: {}", args.user);
             println!("Role: viewer");
             println!("Since: 2024-01-01");
-        },
+        }
         RbacSubcommand::CheckPermission(args) => {
             println!("🔍 Checking permission for user '{}'", args.user);
             println!("Resource: {}", args.resource);
             println!("Action: {}", args.action);
             println!("✅ Permission granted");
-        },
+        }
         RbacSubcommand::GrantPermission(args) => {
             println!("🎁 Granting permission to user '{}'", args.user);
             println!("Resource: {}", args.resource);
             println!("Action: {}", args.action);
             println!("✅ Permission granted");
-        },
+        }
         RbacSubcommand::RevokePermission(args) => {
             println!("🚫 Revoking permission from user '{}'", args.user);
             println!("Resource: {}", args.resource);
             println!("Action: {}", args.action);
             println!("✅ Permission revoked");
-        },
+        }
     }
 
     Ok(())
@@ -733,7 +805,7 @@ async fn manage_audit(args: AuditCommand) -> CommandResult {
             println!("Severity: {:?}", args.severity);
             println!("Period: {:?} to {:?}", args.start_date, args.end_date);
             println!("Found 0 audit events"); // Placeholder
-        },
+        }
         AuditSubcommand::GenerateReport(args) => {
             println!("📊 Generating audit report: {}", args.report_type);
             println!("Period: {:?} to {:?}", args.start_date, args.end_date);
@@ -742,13 +814,13 @@ async fn manage_audit(args: AuditCommand) -> CommandResult {
                 println!("Output: {}", output);
             }
             println!("✅ Report generated successfully");
-        },
+        }
         AuditSubcommand::Metrics(args) => {
             println!("📈 Audit metrics for period: {}", args.period);
             println!("Total events: 0");
             println!("Success rate: 100%");
             println!("Error rate: 0%");
-        },
+        }
         AuditSubcommand::Cleanup(args) => {
             if !args.dry_run && !args.force {
                 println!("This will delete old audit logs. Use --dry-run to preview or --force to confirm.");
@@ -756,14 +828,18 @@ async fn manage_audit(args: AuditCommand) -> CommandResult {
             }
 
             if args.dry_run {
-                println!("🧹 Dry run: would delete audit logs older than {} days",
-                    args.retention_days.unwrap_or(90));
+                println!(
+                    "🧹 Dry run: would delete audit logs older than {} days",
+                    args.retention_days.unwrap_or(90)
+                );
             } else {
-                println!("🗑️ Cleaning up audit logs older than {} days",
-                    args.retention_days.unwrap_or(90));
+                println!(
+                    "🗑️ Cleaning up audit logs older than {} days",
+                    args.retention_days.unwrap_or(90)
+                );
                 println!("✅ Cleanup completed");
             }
-        },
+        }
     }
 
     Ok(())
@@ -781,7 +857,7 @@ async fn manage_security(args: SecurityCommand) -> CommandResult {
             }
             println!("✅ Security scan completed");
             println!("Found 0 security issues"); // Placeholder
-        },
+        }
         SecuritySubcommand::ListSecrets(args) => {
             println!("🔑 Listing secrets");
             if let Some(prefix) = args.prefix {
@@ -791,25 +867,28 @@ async fn manage_security(args: SecurityCommand) -> CommandResult {
                 println!("Including secret values");
             }
             println!("Found 0 secrets"); // Placeholder
-        },
+        }
         SecuritySubcommand::RotateKeys(args) => {
             if !args.force {
-                println!("This will rotate {} encryption keys. Use --force to confirm.", args.key_type);
+                println!(
+                    "This will rotate {} encryption keys. Use --force to confirm.",
+                    args.key_type
+                );
                 return Ok(());
             }
             println!("🔄 Rotating {} encryption keys", args.key_type);
             println!("✅ Key rotation completed successfully");
-        },
+        }
         SecuritySubcommand::Status => {
             println!("🔒 Security Status");
             println!("Encryption: ✅ Enabled");
             println!("Last Key Rotation: 2024-01-01");
             println!("Security Score: 95/100");
-        },
+        }
         SecuritySubcommand::Validate => {
             println!("✅ Security policies validated");
             println!("All policies are compliant");
-        },
+        }
     }
 
     Ok(())

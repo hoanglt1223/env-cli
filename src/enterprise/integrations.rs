@@ -3,11 +3,13 @@
 //! This module handles integrations with external enterprise systems
 //! including SSO providers, secrets managers, and monitoring systems.
 
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
+#![allow(unused_imports, unused_variables, dead_code)]
+
 use crate::enterprise::SSOConfig;
-use crate::error::EnvCliError;
+use crate::error::Result;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tracing::info;
 
 /// Single Sign-On (SSO) provider trait
 #[async_trait::async_trait]
@@ -75,9 +77,10 @@ pub struct SamlSSOProvider {
 impl SamlSSOProvider {
     /// Create a new SAML SSO provider
     pub fn new(config: SSOConfig) -> Self {
+        let entity_id = config.entity_id.clone();
         Self {
-            metadata_url: config.metadata_url.unwrap_or_default(),
-            entity_id: config.entity_id,
+            metadata_url: config.metadata_url.clone().unwrap_or_default(),
+            entity_id,
             config,
         }
     }
@@ -91,13 +94,16 @@ impl SSOProvider for SamlSSOProvider {
 
     async fn initialize(&mut self) -> Result<()> {
         // In a real implementation, this would fetch and parse SAML metadata
-        tracing::info!("Initializing SAML SSO provider with metadata URL: {}", self.metadata_url);
+        info!(
+            "Initializing SAML SSO provider with metadata URL: {}",
+            self.metadata_url
+        );
         Ok(())
     }
 
     async fn authenticate(&self, saml_response: &str) -> Result<SSOUser> {
         // In a real implementation, this would validate and parse SAML response
-        tracing::info!("Authenticating user with SAML response");
+        info!("Authenticating user with SAML response");
 
         Ok(SSOUser {
             id: "saml-user-123".to_string(),
@@ -169,13 +175,13 @@ impl SSOProvider for OidcSSOProvider {
 
     async fn initialize(&mut self) -> Result<()> {
         // In a real implementation, this would discover OIDC endpoints
-        tracing::info!("Initializing OIDC SSO provider");
+        info!("Initializing OIDC SSO provider");
         Ok(())
     }
 
     async fn authenticate(&self, code: &str) -> Result<SSOUser> {
         // In a real implementation, this would exchange code for tokens and get user info
-        tracing::info!("Authenticating user with OIDC code: {}", code);
+        info!("Authenticating user with OIDC code: {}", code);
 
         Ok(SSOUser {
             id: "oidc-user-123".to_string(),
@@ -294,32 +300,38 @@ impl SecretsProvider for VaultSecretsProvider {
 
     async fn initialize(&mut self) -> Result<()> {
         // In a real implementation, this would authenticate with Vault
-        tracing::info!("Initializing Vault secrets provider at: {}", self.config.url);
+        info!(
+            "Initializing Vault secrets provider at: {}",
+            self.config.url
+        );
         Ok(())
     }
 
     async fn store_secret(&self, key: &str, value: &str) -> Result<()> {
         // In a real implementation, this would store the secret in Vault
-        tracing::info!("Storing secret in Vault: {}", key);
+        info!("Storing secret in Vault: {}", key);
         Ok(())
     }
 
     async fn retrieve_secret(&self, key: &str) -> Result<String> {
         // In a real implementation, this would retrieve the secret from Vault
-        tracing::info!("Retrieving secret from Vault: {}", key);
+        info!("Retrieving secret from Vault: {}", key);
         Ok(format!("vault-secret-value-for-{}", key))
     }
 
     async fn delete_secret(&self, key: &str) -> Result<()> {
         // In a real implementation, this would delete the secret from Vault
-        tracing::info!("Deleting secret from Vault: {}", key);
+        info!("Deleting secret from Vault: {}", key);
         Ok(())
     }
 
     async fn list_secrets(&self, prefix: &str) -> Result<Vec<String>> {
         // In a real implementation, this would list secrets with the given prefix
-        tracing::info!("Listing secrets in Vault with prefix: {}", prefix);
-        Ok(vec![format!("{}/secret1", prefix), format!("{}/secret2", prefix)])
+        info!("Listing secrets in Vault with prefix: {}", prefix);
+        Ok(vec![
+            format!("{}/secret1", prefix),
+            format!("{}/secret2", prefix),
+        ])
     }
 
     async fn secret_exists(&self, key: &str) -> Result<bool> {
@@ -375,32 +387,41 @@ impl SecretsProvider for AwsSecretsProvider {
 
     async fn initialize(&mut self) -> Result<()> {
         // In a real implementation, this would initialize AWS SDK
-        tracing::info!("Initializing AWS Secrets Manager in region: {}", self.region);
+        info!(
+            "Initializing AWS Secrets Manager in region: {}",
+            self.region
+        );
         Ok(())
     }
 
     async fn store_secret(&self, key: &str, value: &str) -> Result<()> {
         // In a real implementation, this would store the secret in AWS Secrets Manager
-        tracing::info!("Storing secret in AWS Secrets Manager: {}", key);
+        info!("Storing secret in AWS Secrets Manager: {}", key);
         Ok(())
     }
 
     async fn retrieve_secret(&self, key: &str) -> Result<String> {
         // In a real implementation, this would retrieve the secret from AWS Secrets Manager
-        tracing::info!("Retrieving secret from AWS Secrets Manager: {}", key);
+        info!("Retrieving secret from AWS Secrets Manager: {}", key);
         Ok(format!("aws-secret-value-for-{}", key))
     }
 
     async fn delete_secret(&self, key: &str) -> Result<()> {
         // In a real implementation, this would delete the secret from AWS Secrets Manager
-        tracing::info!("Deleting secret from AWS Secrets Manager: {}", key);
+        info!("Deleting secret from AWS Secrets Manager: {}", key);
         Ok(())
     }
 
     async fn list_secrets(&self, prefix: &str) -> Result<Vec<String>> {
         // In a real implementation, this would list secrets with the given prefix
-        tracing::info!("Listing secrets in AWS Secrets Manager with prefix: {}", prefix);
-        Ok(vec![format!("{}/secret1", prefix), format!("{}/secret2", prefix)])
+        info!(
+            "Listing secrets in AWS Secrets Manager with prefix: {}",
+            prefix
+        );
+        Ok(vec![
+            format!("{}/secret1", prefix),
+            format!("{}/secret2", prefix),
+        ])
     }
 
     async fn secret_exists(&self, key: &str) -> Result<bool> {
@@ -509,22 +530,25 @@ impl MonitoringProvider for PrometheusProvider {
     }
 
     async fn initialize(&mut self) -> Result<()> {
-        tracing::info!("Initializing Prometheus monitoring provider");
+        info!("Initializing Prometheus monitoring provider");
         Ok(())
     }
 
     async fn send_metric(&self, metric: &MonitoringMetric) -> Result<()> {
-        tracing::info!("Sending metric to Prometheus: {} = {}", metric.name, metric.value);
+        info!(
+            "Sending metric to Prometheus: {} = {}",
+            metric.name, metric.value
+        );
         Ok(())
     }
 
     async fn send_log(&self, log: &MonitoringLog) -> Result<()> {
-        tracing::info!("Sending log to Prometheus: {}", log.message);
+        info!("Sending log to Prometheus: {}", log.message);
         Ok(())
     }
 
     async fn send_alert(&self, alert: &MonitoringAlert) -> Result<()> {
-        tracing::info!("Sending alert to Prometheus: {}", alert.title);
+        info!("Sending alert to Prometheus: {}", alert.title);
         Ok(())
     }
 }
@@ -559,17 +583,24 @@ impl IntegrationManager {
 
     /// Add an SSO provider
     pub fn add_sso_provider<P: SSOProvider + 'static>(&mut self, name: &str, provider: P) {
-        self.sso_providers.insert(name.to_string(), Box::new(provider));
+        self.sso_providers
+            .insert(name.to_string(), Box::new(provider));
     }
 
     /// Add a secrets provider
     pub fn add_secrets_provider<P: SecretsProvider + 'static>(&mut self, name: &str, provider: P) {
-        self.secrets_providers.insert(name.to_string(), Box::new(provider));
+        self.secrets_providers
+            .insert(name.to_string(), Box::new(provider));
     }
 
     /// Add a monitoring provider
-    pub fn add_monitoring_provider<P: MonitoringProvider + 'static>(&mut self, name: &str, provider: P) {
-        self.monitoring_providers.insert(name.to_string(), Box::new(provider));
+    pub fn add_monitoring_provider<P: MonitoringProvider + 'static>(
+        &mut self,
+        name: &str,
+        provider: P,
+    ) {
+        self.monitoring_providers
+            .insert(name.to_string(), Box::new(provider));
     }
 
     /// Get an SSO provider

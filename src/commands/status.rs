@@ -1,11 +1,11 @@
 //! Status command implementation.
 
-use crate::config::{load_config, default_config_path};
+use crate::config::{default_config_path, load_config};
 use crate::env::EnvManager;
 use crate::error::{EnvCliError, Result};
-use crate::scan::CodeScanner;
+use chrono::DateTime;
+use std::fs::read_link;
 use std::path::PathBuf;
-use chrono::{DateTime, Utc};
 
 /// Show current environment status.
 pub async fn execute(verbose: bool) -> Result<()> {
@@ -38,16 +38,20 @@ pub async fn execute(verbose: bool) -> Result<()> {
     println!("  ✓ Current environment: {}", current_env);
 
     // Load environment variables
-    let env_file = if let Some(env_config) = config.environments.iter()
-        .find(|e| e.name == current_env) {
-        if let Some(file) = &env_config.file {
-            file.clone()
+    let env_file =
+        if let Some(env_config) = config.environments.iter().find(|e| e.name == current_env) {
+            if let Some(file) = &env_config.file {
+                file.clone()
+            } else {
+                env_dir
+                    .join("environments")
+                    .join(format!("{}.env", current_env))
+            }
         } else {
-            env_dir.join("environments").join(format!("{}.env", current_env))
-        }
-    } else {
-        env_dir.join("environments").join(format!("{}.env", current_env))
-    };
+            env_dir
+                .join("environments")
+                .join(format!("{}.env", current_env))
+        };
 
     let mut env_manager = EnvManager::new();
     let var_count = if env_file.exists() {
@@ -57,13 +61,22 @@ pub async fn execute(verbose: bool) -> Result<()> {
         0
     };
 
-    println!("  ✓ Environment file: {} ({} variables)",
-             env_file.file_name().unwrap_or_default().to_string_lossy(),
-             var_count);
+    println!(
+        "  ✓ Environment file: {} ({} variables)",
+        env_file.file_name().unwrap_or_default().to_string_lossy(),
+        var_count
+    );
 
     // Show available environments
-    println!("  Available environments: {}",
-             config.environments.iter().map(|e| &e.name).collect::<Vec<_>>().join(", "));
+    println!(
+        "  Available environments: {}",
+        config
+            .environments
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     // Check for backups
     let backups_dir = env_dir.join("backups");
@@ -99,7 +112,10 @@ async fn print_detailed_status(
     println!("  Environment file: {}", env_file.display());
     println!("  Default environment: {}", config.default_environment);
     println!("  Total environments: {}", config.environments.len());
-    println!("  Current environment variables: {}", env_manager.list().count());
+    println!(
+        "  Current environment variables: {}",
+        env_manager.list().count()
+    );
 
     // Show environment details
     if let Some(env_config) = config.environments.iter().find(|e| e.name == current_env) {
@@ -111,11 +127,14 @@ async fn print_detailed_status(
     // Show file modification time
     if let Ok(metadata) = std::fs::metadata(env_file) {
         if let Ok(modified) = metadata.modified() {
-            if let Ok(datetime) = DateTime::from_timestamp(
-                modified.duration_since(std::time::UNIX_EPOCH)?.as_secs(),
-                0
+            if let Some(datetime) = DateTime::from_timestamp(
+                modified.duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64,
+                0,
             ) {
-                println!("  Last modified: {}", datetime.format("%Y-%m-%d %H:%M:%S UTC"));
+                println!(
+                    "  Last modified: {}",
+                    datetime.format("%Y-%m-%d %H:%M:%S UTC")
+                );
             }
         }
     }
@@ -195,15 +214,20 @@ fn get_current_environment() -> Result<String> {
     let current_path = PathBuf::from(".env/.current");
 
     if !current_path.exists() {
-        return Err(EnvCliError::Environment("No current environment set".to_string()));
+        return Err(EnvCliError::Environment(
+            "No current environment set".to_string(),
+        ));
     }
 
     #[cfg(unix)]
     {
         use std::os::unix::fs;
-        let target = fs::read_link(&current_path)?;
+        let target = read_link(&current_path)?;
 
-        if let Some(file_name) = target.file_name().and_then(|n| n.to_str()) {
+        if let Some(file_name) = target
+            .file_name()
+            .and_then(|n: &std::ffi::OsStr| n.to_str())
+        {
             if let Some(env_name) = file_name.strip_suffix(".env") {
                 return Ok(env_name.to_string());
             }
@@ -212,17 +236,21 @@ fn get_current_environment() -> Result<String> {
 
     #[cfg(windows)]
     {
-        use std::os::windows::fs;
-        let target = fs::read_link(&current_path)?;
+        let target = read_link(&current_path)?;
 
-        if let Some(file_name) = target.file_name().and_then(|n| n.to_str()) {
+        if let Some(file_name) = target
+            .file_name()
+            .and_then(|n: &std::ffi::OsStr| n.to_str())
+        {
             if let Some(env_name) = file_name.strip_suffix(".env") {
                 return Ok(env_name.to_string());
             }
         }
     }
 
-    Err(EnvCliError::Environment("Unable to determine current environment".to_string()))
+    Err(EnvCliError::Environment(
+        "Unable to determine current environment".to_string(),
+    ))
 }
 
 /// Mask sensitive values for display.
@@ -244,8 +272,15 @@ fn mask_sensitive_value(key: &str, value: &str) -> String {
 /// Check if a value is insecure.
 fn is_insecure_value(value: &str, security_config: &crate::config::SecurityConfig) -> bool {
     let placeholders = [
-        "change_me", "placeholder", "your_api_key", "your_secret",
-        "change_this", "todo", "xxx", "111111", "123456",
+        "change_me",
+        "placeholder",
+        "your_api_key",
+        "your_secret",
+        "change_this",
+        "todo",
+        "xxx",
+        "111111",
+        "123456",
     ];
 
     let lower_value = value.to_lowercase();
@@ -276,15 +311,19 @@ async fn show_recent_activity() -> Result<()> {
 
     let mut entries: Vec<_> = std::fs::read_dir(&backups_dir)?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            entry.file_name().to_string_lossy().ends_with(".env")
-        })
+        .filter(|entry| entry.file_name().to_string_lossy().ends_with(".env"))
         .collect();
 
     // Sort by modification time (newest first)
     entries.sort_by(|a, b| {
-        let a_time = a.metadata().and_then(|m| m.modified()).unwrap_or(std::time::UNIX_EPOCH);
-        let b_time = b.metadata().and_then(|m| m.modified()).unwrap_or(std::time::UNIX_EPOCH);
+        let a_time = a
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or(std::time::UNIX_EPOCH);
+        let b_time = b
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or(std::time::UNIX_EPOCH);
         b_time.cmp(&a_time)
     });
 
@@ -292,15 +331,17 @@ async fn show_recent_activity() -> Result<()> {
     for entry in entries.iter().take(5) {
         if let Ok(metadata) = entry.metadata() {
             if let Ok(modified) = metadata.modified() {
-                if let Ok(datetime) = DateTime::from_timestamp(
-                    modified.duration_since(std::time::UNIX_EPOCH)?.as_secs(),
-                    0
+                if let Some(datetime) = DateTime::from_timestamp(
+                    modified.duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64,
+                    0,
                 ) {
-                    let filename = entry.file_name().to_string_lossy();
+                    let filename = entry.file_name().to_string_lossy().into_owned();
                     if let Some(env_name) = filename.strip_suffix(".env") {
-                        if let Some(timestamp) = env_name.split('_').last() {
-                            println!("  [{}] Environment backup created",
-                                   datetime.format("%Y-%m-%d %H:%M"));
+                        if let Some(_timestamp) = env_name.split('_').last() {
+                            println!(
+                                "  [{}] Environment backup created",
+                                datetime.format("%Y-%m-%d %H:%M")
+                            );
                             activity_count += 1;
                         }
                     }
@@ -312,6 +353,8 @@ async fn show_recent_activity() -> Result<()> {
     if activity_count == 0 {
         println!("  No recent activity found");
     }
+
+    Ok(())
 }
 
 /// Show directory tree structure.
@@ -323,7 +366,7 @@ fn show_directory_tree(dir: &PathBuf, indent: usize) -> Result<()> {
         entries.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
         for entry in entries {
-            let name = entry.file_name().to_string_lossy();
+            let name = entry.file_name().to_string_lossy().to_string();
             let path = entry.path();
 
             if path.is_dir() {

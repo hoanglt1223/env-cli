@@ -61,7 +61,8 @@ description = "Production environment"
 auto_refresh = false
 approval_required = true
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Create sample project files
     fs::write(
@@ -71,7 +72,8 @@ REACT_APP_API_URL=http://localhost:3001
 REACT_APP_ENV=development
 REACT_APP_DEBUG=true
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     fs::write(
         workspace_dir.join("projects/backend/.env/development.env"),
@@ -81,7 +83,8 @@ API_PORT=3001
 DEBUG=true
 CORS_ORIGIN=http://localhost:3000
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     temp_dir
 }
@@ -135,7 +138,8 @@ vault_provider = "hashicorp"
 ldap_enabled = true
 saml_sso = true
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     temp_dir
 }
@@ -364,7 +368,12 @@ fn test_enterprise_workspace_integration() -> Result<(), Box<dyn std::error::Err
     // Link workspace to enterprise
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(workspace_dir.path());
-    cmd.args(["workspace", "link", "--enterprise", enterprise_dir.path().to_str().unwrap()]);
+    cmd.args([
+        "workspace",
+        "link",
+        "--enterprise",
+        enterprise_dir.path().to_str().unwrap(),
+    ]);
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("linking"))
@@ -385,7 +394,14 @@ fn test_multi_environment_workflow() -> Result<(), Box<dyn std::error::Error>> {
     // Set development environment for frontend
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(workspace_dir.path());
-    cmd.args(["workspace", "env", "set", "frontend", "development", "--yes"]);
+    cmd.args([
+        "workspace",
+        "env",
+        "set",
+        "frontend",
+        "development",
+        "--yes",
+    ]);
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("frontend"))
@@ -458,7 +474,14 @@ fn test_team_collaboration_workflow() -> Result<(), Box<dyn std::error::Error>> 
     // Add team member
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(workspace_dir.path());
-    cmd.args(["workspace", "members", "add", "alice@example.com", "--role", "developer"]);
+    cmd.args([
+        "workspace",
+        "members",
+        "add",
+        "alice@example.com",
+        "--role",
+        "developer",
+    ]);
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("alice@example.com"))
@@ -467,7 +490,14 @@ fn test_team_collaboration_workflow() -> Result<(), Box<dyn std::error::Error>> 
     // Set permissions
     let mut cmd = Command::cargo_bin("env")?;
     cmd.current_dir(workspace_dir.path());
-    cmd.args(["workspace", "permissions", "set", "alice@example.com", "frontend", "read-write"]);
+    cmd.args([
+        "workspace",
+        "permissions",
+        "set",
+        "alice@example.com",
+        "frontend",
+        "read-write",
+    ]);
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("permissions"))
@@ -496,10 +526,9 @@ fn test_workspace_invalid_project_path() -> Result<(), Box<dyn std::error::Error
     cmd.current_dir(workspace_dir.path());
     cmd.args(["workspace", "add", "invalid", "/nonexistent/path", "--yes"]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("not found")
-            .or(predicates::str::contains("invalid path")));
+    cmd.assert().failure().stderr(
+        predicates::str::contains("not found").or(predicates::str::contains("invalid path")),
+    );
 
     Ok(())
 }
@@ -512,10 +541,9 @@ fn test_enterprise_missing_config() -> Result<(), Box<dyn std::error::Error>> {
     cmd.current_dir(temp_dir.path());
     cmd.args(["enterprise", "status"]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("not initialized")
-            .or(predicates::str::contains("configuration")));
+    cmd.assert().failure().stderr(
+        predicates::str::contains("not initialized").or(predicates::str::contains("configuration")),
+    );
 
     Ok(())
 }
@@ -534,10 +562,9 @@ fn test_workspace_duplicate_project() -> Result<(), Box<dyn std::error::Error>> 
     cmd.current_dir(workspace_dir.path());
     cmd.args(["workspace", "add", "frontend", "projects/frontend", "--yes"]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("already exists")
-            .or(predicates::str::contains("duplicate")));
+    cmd.assert().failure().stderr(
+        predicates::str::contains("already exists").or(predicates::str::contains("duplicate")),
+    );
 
     Ok(())
 }
@@ -556,11 +583,11 @@ fn test_permission_denied_scenarios() -> Result<(), Box<dyn std::error::Error>> 
     cmd.current_dir(workspace_dir.path());
     cmd.args(["workspace", "env", "set", "frontend", "production"]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("permission")
+    cmd.assert().failure().stderr(
+        predicates::str::contains("permission")
             .or(predicates::str::contains("access denied"))
-            .or(predicates::str::contains("approval")));
+            .or(predicates::str::contains("approval")),
+    );
 
     Ok(())
 }
@@ -583,13 +610,21 @@ fn test_large_workspace_performance() -> Result<(), Box<dyn std::error::Error>> 
 
         // Create environment file for each project
         fs::write(
-            workspace_dir.join(&project_path).join(".env/development.env"),
-            format!(r#"# Project {} Development
+            workspace_dir
+                .join(&project_path)
+                .join(".env/development.env"),
+            format!(
+                r#"# Project {} Development
 PROJECT_ID={}
 API_URL=http://localhost:300{}
 DEBUG=true
-"#, i, i, 8000 + i),
-        ).unwrap();
+"#,
+                i,
+                i,
+                8000 + i
+            ),
+        )
+        .unwrap();
     }
 
     // Initialize large workspace

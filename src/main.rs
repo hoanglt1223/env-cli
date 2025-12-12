@@ -2,6 +2,7 @@
 //!
 //! This is the main entry point for the env-cli application.
 
+use clap::Parser;
 use env_cli::cli::Cli;
 use env_cli::commands::execute_command;
 use env_cli::error::Result;

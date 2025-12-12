@@ -1,10 +1,10 @@
 //! Common utilities and helpers for integration tests
 
+use assert_cmd::Command as AssertCommand;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::TempDir;
-use assert_cmd::Command as AssertCommand;
 
 /// Test configuration structure
 #[derive(Debug, Clone)]
@@ -480,7 +480,11 @@ impl TestProject {
     }
 
     /// Write file content
-    pub fn write_file(&self, relative_path: impl AsRef<Path>, content: &str) -> Result<(), std::io::Error> {
+    pub fn write_file(
+        &self,
+        relative_path: impl AsRef<Path>,
+        content: &str,
+    ) -> Result<(), std::io::Error> {
         if let Some(parent) = self.file_path(relative_path).parent() {
             fs::create_dir_all(parent)?;
         }
@@ -500,7 +504,10 @@ impl TestProject {
     }
 
     /// Run an env-cli command and return the result
-    pub fn run_env_command(&self, args: &[&str]) -> Result<assert_cmd::assert::Assert, Box<dyn std::error::Error>> {
+    pub fn run_env_command(
+        &self,
+        args: &[&str],
+    ) -> Result<assert_cmd::assert::Assert, Box<dyn std::error::Error>> {
         let mut cmd = self.env_cli();
         for arg in args {
             cmd.arg(arg);
@@ -541,7 +548,10 @@ impl EnvVarGenerator {
     /// Generate a set of common environment variables
     pub fn generate_common_vars() -> Vec<(&'static str, String)> {
         vec![
-            ("DATABASE_URL", "postgresql://localhost:5432/test_db".to_string()),
+            (
+                "DATABASE_URL",
+                "postgresql://localhost:5432/test_db".to_string(),
+            ),
             ("API_KEY", "test_api_key_12345".to_string()),
             ("APP_SECRET", "super_secret_key_16_chars".to_string()),
             ("DEBUG", "true".to_string()),

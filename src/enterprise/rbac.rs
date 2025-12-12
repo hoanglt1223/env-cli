@@ -3,12 +3,13 @@
 //! This module implements a comprehensive RBAC system for enterprise
 //! access control with granular permissions and roles.
 
-use std::collections::{HashMap, HashSet};
+#![allow(unused_imports, unused_variables, dead_code)]
+
+use crate::enterprise::{Action, Effect, Resource, UserId};
+use crate::error::Result;
+use crate::EnvCliError;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use anyhow::Result;
-use crate::enterprise::{UserId, Resource, Action, Effect};
-use crate::error::EnvCliError;
+use std::collections::{HashMap, HashSet};
 
 /// User roles with hierarchical permissions
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -101,7 +102,7 @@ impl std::fmt::Display for Role {
 impl std::str::FromStr for Role {
     type Err = EnvCliError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "owner" => Ok(Role::Owner),
             "admin" => Ok(Role::Admin),
@@ -187,7 +188,13 @@ impl PermissionMatrix {
 
     /// Initialize default permissions for standard roles
     fn initialize_default_permissions(&mut self) {
-        for role in [Role::Owner, Role::Admin, Role::Editor, Role::Viewer, Role::Auditor] {
+        for role in [
+            Role::Owner,
+            Role::Admin,
+            Role::Editor,
+            Role::Viewer,
+            Role::Auditor,
+        ] {
             for permission in role.default_permissions() {
                 self.add_permission(&role, permission);
             }
@@ -196,8 +203,12 @@ impl PermissionMatrix {
 
     /// Setup role hierarchy for permission inheritance
     fn setup_role_hierarchy(&mut self) {
-        self.hierarchy.insert(Role::Owner, vec![Role::Admin, Role::Editor, Role::Viewer, Role::Auditor]);
-        self.hierarchy.insert(Role::Admin, vec![Role::Editor, Role::Viewer]);
+        self.hierarchy.insert(
+            Role::Owner,
+            vec![Role::Admin, Role::Editor, Role::Viewer, Role::Auditor],
+        );
+        self.hierarchy
+            .insert(Role::Admin, vec![Role::Editor, Role::Viewer]);
         self.hierarchy.insert(Role::Editor, vec![Role::Viewer]);
         self.hierarchy.insert(Role::Viewer, vec![]);
         self.hierarchy.insert(Role::Auditor, vec![]);
@@ -236,9 +247,9 @@ impl PermissionMatrix {
 
     /// Check if a permission is explicitly denied
     fn is_denied(&self, role: &Role, resource: &Resource, action: &Action) -> bool {
-        self.deny_rules.iter().any(|perm| {
-            perm.resource == *resource && perm.action == *action
-        })
+        self.deny_rules
+            .iter()
+            .any(|perm| perm.resource == *resource && perm.action == *action)
     }
 
     /// Check if a role has direct permission
@@ -402,9 +413,10 @@ impl RbacEngine {
 
     /// Assign a role to a user
     pub fn assign_role(&mut self, user_id: UserId, role: Role) {
-        let assignment = self.user_assignments
+        let assignment = self
+            .user_assignments
             .entry(user_id)
-            .or_insert_with(UserAssignment::new);
+            .or_insert_with(|| UserAssignment::new(user_id));
         assignment.add_role(role);
     }
 
@@ -428,16 +440,20 @@ impl RbacEngine {
         }
 
         // Check explicitly denied permissions first
-        if assignment.denied_permissions.iter().any(|perm| {
-            perm.resource == *resource && perm.action == *action
-        }) {
+        if assignment
+            .denied_permissions
+            .iter()
+            .any(|perm| perm.resource == *resource && perm.action == *action)
+        {
             return false;
         }
 
         // Check additional permissions
-        if assignment.additional_permissions.iter().any(|perm| {
-            perm.resource == *resource && perm.action == *action
-        }) {
+        if assignment
+            .additional_permissions
+            .iter()
+            .any(|perm| perm.resource == *resource && perm.action == *action)
+        {
             return true;
         }
 
@@ -451,9 +467,10 @@ impl RbacEngine {
         // Check resource-specific permissions
         if let Some(resource_perms) = self.resource_permissions.get(&self.resource_key(resource)) {
             if let Some(user_perms) = resource_perms.get(&user_id) {
-                if user_perms.iter().any(|perm| {
-                    perm.resource == *resource && perm.action == *action
-                }) {
+                if user_perms
+                    .iter()
+                    .any(|perm| perm.resource == *resource && perm.action == *action)
+                {
                     return true;
                 }
             }
@@ -464,7 +481,8 @@ impl RbacEngine {
 
     /// Grant a specific permission to a user on a resource
     pub fn grant_permission(&mut self, user_id: UserId, resource_id: &str, permission: Permission) {
-        let resource_perms = self.resource_permissions
+        let resource_perms = self
+            .resource_permissions
             .entry(resource_id.to_string())
             .or_insert_with(HashMap::new);
         let user_perms = resource_perms.entry(user_id).or_insert_with(HashSet::new);
@@ -472,7 +490,12 @@ impl RbacEngine {
     }
 
     /// Revoke a specific permission from a user on a resource
-    pub fn revoke_permission(&mut self, user_id: UserId, resource_id: &str, permission: &Permission) {
+    pub fn revoke_permission(
+        &mut self,
+        user_id: UserId,
+        resource_id: &str,
+        permission: &Permission,
+    ) {
         if let Some(resource_perms) = self.resource_permissions.get_mut(resource_id) {
             if let Some(user_perms) = resource_perms.get_mut(&user_id) {
                 user_perms.remove(permission);
@@ -521,7 +544,9 @@ impl RbacEngine {
 
     /// Validate user assignment
     pub fn validate_assignment(&self, user_id: UserId) -> Result<()> {
-        let assignment = self.user_assignments.get(&user_id)
+        let assignment = self
+            .user_assignments
+            .get(&user_id)
             .ok_or_else(|| EnvCliError::RbacError("User assignment not found".to_string()))?;
 
         if assignment.is_expired() {
@@ -602,6 +627,9 @@ mod tests {
     fn test_role_from_str() {
         assert_eq!("owner".parse::<Role>().unwrap(), Role::Owner);
         assert_eq!("admin".parse::<Role>().unwrap(), Role::Admin);
-        assert_eq!("custom_role".parse::<Role>().unwrap(), Role::Custom("custom_role".to_string()));
+        assert_eq!(
+            "custom_role".parse::<Role>().unwrap(),
+            Role::Custom("custom_role".to_string())
+        );
     }
 }

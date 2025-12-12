@@ -3,11 +3,11 @@
 //! This module handles enterprise-specific configuration management
 //! including workspace settings, security policies, and integration configs.
 
+use crate::error::EnvCliError;
+use crate::error::Result;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
-use crate::error::EnvCliError;
 
 /// Re-export the audit config from the main enterprise module
 pub use super::AuditConfig;
@@ -472,7 +472,9 @@ impl Default for BackupConfig {
             enabled: true,
             frequency_hours: 24,
             retain_count: 30,
-            location: BackupLocation::Local { path: "./backups".to_string() },
+            location: BackupLocation::Local {
+                path: "./backups".to_string(),
+            },
             encryption_enabled: true,
             compression_enabled: true,
             include_environments: true,
@@ -488,7 +490,11 @@ pub enum BackupLocation {
     /// Local filesystem
     Local { path: String },
     /// S3 bucket
-    S3 { bucket: String, prefix: String, region: String },
+    S3 {
+        bucket: String,
+        prefix: String,
+        region: String,
+    },
     /// Azure Blob Storage
     Azure { container: String, prefix: String },
     /// Google Cloud Storage
@@ -600,7 +606,8 @@ impl EnterpriseConfigManager {
 
     /// Load configuration from file
     pub async fn load_from_file<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-        let content = tokio::fs::read_to_string(&path).await
+        let content = tokio::fs::read_to_string(&path)
+            .await
             .map_err(|e| EnvCliError::ConfigError(format!("Failed to read config file: {}", e)))?;
 
         self.config = toml::from_str(&content)
@@ -615,7 +622,8 @@ impl EnterpriseConfigManager {
         let content = toml::to_string_pretty(&self.config)
             .map_err(|e| EnvCliError::ConfigError(format!("Failed to serialize config: {}", e)))?;
 
-        tokio::fs::write(&path, content).await
+        tokio::fs::write(&path, content)
+            .await
             .map_err(|e| EnvCliError::ConfigError(format!("Failed to write config file: {}", e)))?;
 
         Ok(())
@@ -641,30 +649,44 @@ impl EnterpriseConfigManager {
         if self.config.enabled {
             // Validate workspace name
             if self.config.workspace_name.is_empty() {
-                return Err(EnvCliError::ConfigError("Workspace name cannot be empty".to_string()).into());
+                return Err(
+                    EnvCliError::ConfigError("Workspace name cannot be empty".to_string()).into(),
+                );
             }
 
             // Validate security settings
             if self.config.security.encryption_at_rest {
                 if self.config.security.encryption_algorithm.is_empty() {
-                    return Err(EnvCliError::ConfigError("Encryption algorithm cannot be empty".to_string()).into());
+                    return Err(EnvCliError::ConfigError(
+                        "Encryption algorithm cannot be empty".to_string(),
+                    )
+                    .into());
                 }
             }
 
             // Validate SSO configuration if provided
             if let Some(sso_config) = &self.config.sso {
                 if sso_config.provider.is_empty() {
-                    return Err(EnvCliError::ConfigError("SSO provider cannot be empty".to_string()).into());
+                    return Err(EnvCliError::ConfigError(
+                        "SSO provider cannot be empty".to_string(),
+                    )
+                    .into());
                 }
             }
 
             // Validate LDAP configuration if provided
             if let Some(ldap_config) = &self.config.ldap {
                 if ldap_config.server_url.is_empty() {
-                    return Err(EnvCliError::ConfigError("LDAP server URL cannot be empty".to_string()).into());
+                    return Err(EnvCliError::ConfigError(
+                        "LDAP server URL cannot be empty".to_string(),
+                    )
+                    .into());
                 }
                 if ldap_config.base_dn.is_empty() {
-                    return Err(EnvCliError::ConfigError("LDAP base DN cannot be empty".to_string()).into());
+                    return Err(EnvCliError::ConfigError(
+                        "LDAP base DN cannot be empty".to_string(),
+                    )
+                    .into());
                 }
             }
         }
@@ -767,7 +789,9 @@ mod tests {
 
     #[test]
     fn test_backup_location() {
-        let local = BackupLocation::Local { path: "/tmp/backups".to_string() };
+        let local = BackupLocation::Local {
+            path: "/tmp/backups".to_string(),
+        };
         let s3 = BackupLocation::S3 {
             bucket: "my-bucket".to_string(),
             prefix: "backups".to_string(),
@@ -780,11 +804,15 @@ mod tests {
         }
 
         match s3 {
-            BackupLocation::S3 { bucket, prefix, region } => {
+            BackupLocation::S3 {
+                bucket,
+                prefix,
+                region,
+            } => {
                 assert_eq!(bucket, "my-bucket");
                 assert_eq!(prefix, "backups");
                 assert_eq!(region, "us-west-2");
-            },
+            }
             _ => panic!("Expected S3 backup location"),
         }
     }

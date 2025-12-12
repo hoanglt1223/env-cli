@@ -3,12 +3,12 @@
 //! This module contains tests for edge cases, error conditions,
 //! and boundary scenarios to ensure robustness.
 
+use crate::common::TestProjectBuilder;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
-use crate::common::TestProjectBuilder;
 
 // ============================================================================
 // Invalid Input Tests
@@ -16,23 +16,29 @@ use crate::common::TestProjectBuilder;
 
 #[test]
 fn test_empty_environment_names() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
     let mut cmd = project.env_cli();
 
     cmd.args(["switch", ""]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("empty")
+    cmd.assert().failure().stderr(
+        predicates::str::contains("empty")
             .or(predicates::str::contains("invalid"))
-            .or(predicates::str::contains("required")));
+            .or(predicates::str::contains("required")),
+    );
 
     Ok(())
 }
 
 #[test]
 fn test_special_characters_in_environment_names() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     let invalid_names = vec![
         "env-with spaces",
@@ -51,11 +57,11 @@ fn test_special_characters_in_environment_names() -> Result<(), Box<dyn std::err
         let mut cmd = project.env_cli();
         cmd.args(["switch", name]);
 
-        cmd.assert()
-            .failure()
-            .stderr(predicates::str::contains("invalid")
+        cmd.assert().failure().stderr(
+            predicates::str::contains("invalid")
                 .or(predicates::str::contains("format"))
-                .or(predicates::str::contains("special")));
+                .or(predicates::str::contains("special")),
+        );
     }
 
     Ok(())
@@ -63,7 +69,10 @@ fn test_special_characters_in_environment_names() -> Result<(), Box<dyn std::err
 
 #[test]
 fn test_very_long_environment_names() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Create a very long environment name (1000 characters)
     let long_name = "a".repeat(1000);
@@ -71,25 +80,28 @@ fn test_very_long_environment_names() -> Result<(), Box<dyn std::error::Error>> 
 
     cmd.args(["switch", &long_name]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("too long")
+    cmd.assert().failure().stderr(
+        predicates::str::contains("too long")
             .or(predicates::str::contains("invalid"))
-            .or(predicates::str::contains("maximum")));
+            .or(predicates::str::contains("maximum")),
+    );
 
     Ok(())
 }
 
 #[test]
 fn test_unicode_environment_names() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     let unicode_names = vec![
-        "环境", // Chinese
-        "окружение", // Russian
+        "环境",          // Chinese
+        "окружение",     // Russian
         "environnement", // French with special char
-        "umgebung", // German
-        "環境", // Japanese
+        "umgebung",      // German
+        "環境",          // Japanese
     ];
 
     for name in unicode_names {
@@ -99,9 +111,11 @@ fn test_unicode_environment_names() -> Result<(), Box<dyn std::error::Error>> {
         // Unicode should generally be supported, but test the behavior
         let result = cmd.assert();
         if !result.get_output().status.success() {
-            result.stderr(predicates::str::contains("unicode")
-                .or(predicates::str::contains("encoding"))
-                .or(predicates::str::contains("unsupported")));
+            result.stderr(
+                predicates::str::contains("unicode")
+                    .or(predicates::str::contains("encoding"))
+                    .or(predicates::str::contains("unsupported")),
+            );
         }
     }
 
@@ -120,18 +134,20 @@ fn test_nonexistent_config_directory() -> Result<(), Box<dyn std::error::Error>>
     cmd.current_dir(temp_dir.path());
     cmd.arg("status");
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("not initialized")
-            .or(predicates::str::contains("config")
-            .or(predicates::str::contains("directory"))));
+    cmd.assert().failure().stderr(
+        predicates::str::contains("not initialized")
+            .or(predicates::str::contains("config").or(predicates::str::contains("directory"))),
+    );
 
     Ok(())
 }
 
 #[test]
 fn test_permission_denied_scenarios() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Create a read-only directory (if possible on the system)
     let readonly_dir = project.path().join("readonly");
@@ -147,13 +163,19 @@ fn test_permission_denied_scenarios() -> Result<(), Box<dyn std::error::Error>> 
     }
 
     let mut cmd = project.env_cli();
-    cmd.args(["generate", "--output", readonly_dir.join("test.env").to_str().unwrap()]);
+    cmd.args([
+        "generate",
+        "--output",
+        readonly_dir.join("test.env").to_str().unwrap(),
+    ]);
 
     let result = cmd.assert();
     if !result.get_output().status.success() {
-        result.stderr(predicates::str::contains("permission")
-            .or(predicates::str::contains("access"))
-            .or(predicates::str::contains("denied")));
+        result.stderr(
+            predicates::str::contains("permission")
+                .or(predicates::str::contains("access"))
+                .or(predicates::str::contains("denied")),
+        );
     }
 
     Ok(())
@@ -161,7 +183,10 @@ fn test_permission_denied_scenarios() -> Result<(), Box<dyn std::error::Error>> 
 
 #[test]
 fn test_disk_space_exhaustion_simulation() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Create a very large file to simulate disk space issues (limited size for test)
     let large_file = project.path().join("large_file.txt");
@@ -174,15 +199,16 @@ fn test_disk_space_exhaustion_simulation() -> Result<(), Box<dyn std::error::Err
     // The command should still work even with large files present
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("scanning")
-            .or(predicates::str::contains("completed")));
+        .stdout(predicates::str::contains("scanning").or(predicates::str::contains("completed")));
 
     Ok(())
 }
 
 #[test]
 fn test_malformed_config_files() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .build();
 
     // Create malformed config.toml
     let malformed_config = r#"[project
@@ -198,19 +224,22 @@ name = "development"  # Malformed TOML syntax
     let mut cmd = project.env_cli();
     cmd.arg("status");
 
-    cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("config")
-            .or(predicates::str::contains("parse")
-            .or(predicates::str::contains("invalid")
-            .or(predicates::str::contains("TOML"))));
+    cmd.assert().failure().stderr(
+        predicates::str::contains("config")
+            .or(predicates::str::contains("parse"))
+            .or(predicates::str::contains("invalid"))
+            .or(predicates::str::contains("TOML")),
+    );
 
     Ok(())
 }
 
 #[test]
 fn test_corrupted_environment_files() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Create corrupted .env file with invalid encoding
     let corrupted_content = vec![0xFF, 0xFE, 0xFD, 0xFC]; // Invalid UTF-8
@@ -219,13 +248,12 @@ fn test_corrupted_environment_files() -> Result<(), Box<dyn std::error::Error>> 
     let mut cmd = project.env_cli();
     cmd.args(["validate", "--env", "development"]);
 
-    let result = cmd.assert();
-    if !result.get_output().status.success() {
-        result.stderr(predicates::str::contains("encoding")
-            .or(predicates::str::contains("invalid")
+    cmd.assert().failure().stderr(
+        predicates::str::contains("encoding")
+            .or(predicates::str::contains("invalid"))
             .or(predicates::str::contains("corrupted"))
-            .or(predicates::str::contains("UTF-8")));
-    }
+            .or(predicates::str::contains("UTF-8")),
+    );
 
     Ok(())
 }
@@ -236,7 +264,10 @@ fn test_corrupted_environment_files() -> Result<(), Box<dyn std::error::Error>> 
 
 #[test]
 fn test_offline_mode() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Test that basic commands work in offline mode
     let mut cmd = project.env_cli();
@@ -244,22 +275,26 @@ fn test_offline_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("current")
-            .or(predicates::str::contains("environment")));
+        .stdout(predicates::str::contains("current").or(predicates::str::contains("environment")));
 
     Ok(())
 }
 
 #[test]
 fn test_timeout_scenarios() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .build();
 
     // Create a very deep directory structure to potentially cause timeouts
     let mut current_path = project.path().to_path_buf();
     for i in 0..100 {
         current_path = current_path.join(format!("level_{}", i));
         fs::create_dir_all(&current_path)?;
-        fs::write(current_path.join("file.rs"), format!("const VAR_{} = \"value\";", i))?;
+        fs::write(
+            current_path.join("file.rs"),
+            format!("const VAR_{} = \"value\";", i),
+        )?;
     }
 
     let mut cmd = project.env_cli();
@@ -268,9 +303,11 @@ fn test_timeout_scenarios() -> Result<(), Box<dyn std::error::Error>> {
     // Set a reasonable timeout and check behavior
     let result = cmd.assert();
     if !result.get_output().status.success() {
-        result.stderr(predicates::str::contains("timeout")
-            .or(predicates::str::contains("time"))
-            .or(predicates::str::contains("slow")));
+        result.stderr(
+            predicates::str::contains("timeout")
+                .or(predicates::str::contains("time"))
+                .or(predicates::str::contains("slow")),
+        );
     }
 
     Ok(())
@@ -282,7 +319,10 @@ fn test_timeout_scenarios() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_concurrent_file_access() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Simulate concurrent access by creating lock files
     let lock_file = project.path().join(".env.lock");
@@ -300,15 +340,19 @@ fn test_concurrent_file_access() -> Result<(), Box<dyn std::error::Error>> {
 
     // At least one should succeed or provide a clear error about locking
     if !result1.get_output().status.success() {
-        result1.stderr(predicates::str::contains("lock")
-            .or(predicates::str::contains("concurrent"))
-            .or(predicates::str::contains("busy")));
+        result1.stderr(
+            predicates::str::contains("lock")
+                .or(predicates::str::contains("concurrent"))
+                .or(predicates::str::contains("busy")),
+        );
     }
 
     if !result2.get_output().status.success() {
-        result2.stderr(predicates::str::contains("lock")
-            .or(predicates::str::contains("concurrent"))
-            .or(predicates::str::contains("busy")));
+        result2.stderr(
+            predicates::str::contains("lock")
+                .or(predicates::str::contains("concurrent"))
+                .or(predicates::str::contains("busy")),
+        );
     }
 
     Ok(())
@@ -320,7 +364,10 @@ fn test_concurrent_file_access() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_large_environment_variable_values() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Create environment file with very large values
     let large_value = "x".repeat(1_000_000); // 1MB
@@ -338,15 +385,16 @@ DATABASE_URL=postgresql://localhost:5432/test_db
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("valid")
-            .or(predicates::str::contains("success")));
+        .stdout(predicates::str::contains("valid").or(predicates::str::contains("success")));
 
     Ok(())
 }
 
 #[test]
 fn test_many_environment_variables() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .build();
 
     // Create .env file with many variables
     let mut env_content = String::new();
@@ -362,8 +410,7 @@ fn test_many_environment_variables() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("valid")
-            .or(predicates::str::contains("success")));
+        .stdout(predicates::str::contains("valid").or(predicates::str::contains("success")));
 
     Ok(())
 }
@@ -374,12 +421,21 @@ fn test_many_environment_variables() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_special_characters_in_values() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Test various special characters in environment variable values
     let special_values = vec![
-        ("URL_WITH_SPECIAL", "https://example.com/path?param=value&other=test#fragment"),
-        ("JSON_VALUE", "{\"key\": \"value\", \"array\": [1, 2, 3], \"nested\": {\"bool\": true}}"),
+        (
+            "URL_WITH_SPECIAL",
+            "https://example.com/path?param=value&other=test#fragment",
+        ),
+        (
+            "JSON_VALUE",
+            "{\"key\": \"value\", \"array\": [1, 2, 3], \"nested\": {\"bool\": true}}",
+        ),
         ("NEWLINES", "line1\nline2\nline3"),
         ("TABS", "col1\tcol2\tcol3"),
         ("QUOTES", "\"single\" and 'double' quotes"),
@@ -402,8 +458,7 @@ fn test_special_characters_in_values() -> Result<(), Box<dyn std::error::Error>>
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("valid")
-            .or(predicates::str::contains("success")));
+        .stdout(predicates::str::contains("valid").or(predicates::str::contains("success")));
 
     Ok(())
 }
@@ -414,14 +469,20 @@ fn test_special_characters_in_values() -> Result<(), Box<dyn std::error::Error>>
 
 #[test]
 fn test_windows_path_handling() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Test Windows-style paths in environment variables
     let windows_paths = vec![
         ("WINDOWS_PATH", "C:\\Program Files\\MyApp\\config"),
         ("UNC_PATH", "\\\\server\\share\\folder"),
         ("MIXED_PATH", "C:/mixed/slash/style/path"),
-        ("LONG_PATH", &format!("{}\\{}", "C:\\".to_string(), "a".repeat(100))),
+        (
+            "LONG_PATH",
+            &format!("{}\\{}", "C:\\".to_string(), "a".repeat(100)),
+        ),
     ];
 
     let mut env_content = String::new();
@@ -437,8 +498,7 @@ fn test_windows_path_handling() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("valid")
-            .or(predicates::str::contains("success")));
+        .stdout(predicates::str::contains("valid").or(predicates::str::contains("success")));
 
     Ok(())
 }
@@ -446,14 +506,20 @@ fn test_windows_path_handling() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(unix)]
 #[test]
 fn test_unix_path_handling() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.create_config_files()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .create_config_files()?
+        .build();
 
     // Test Unix-style paths in environment variables
     let unix_paths = vec![
         ("UNIX_PATH", "/usr/local/bin/app"),
         ("HOME_PATH", "~/Documents/myapp"),
         ("RELATIVE_PATH", "./config/settings.yaml"),
-        ("DEEP_PATH", "/very/deep/nested/directory/structure/path/to/file"),
+        (
+            "DEEP_PATH",
+            "/very/deep/nested/directory/structure/path/to/file",
+        ),
     ];
 
     let mut env_content = String::new();
@@ -469,8 +535,7 @@ fn test_unix_path_handling() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("valid")
-            .or(predicates::str::contains("success")));
+        .stdout(predicates::str::contains("valid").or(predicates::str::contains("success")));
 
     Ok(())
 }
@@ -481,7 +546,9 @@ fn test_unix_path_handling() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_max_file_descriptors() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .build();
 
     // Create many small files to potentially exhaust file descriptors
     for i in 0..1000 {
@@ -494,34 +561,41 @@ fn test_max_file_descriptors() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("scanning")
-            .or(predicates::str::contains("completed")));
+        .stdout(predicates::str::contains("scanning").or(predicates::str::contains("completed")));
 
     Ok(())
 }
 
 #[test]
 fn test_extremely_deep_directory_structure() -> Result<(), Box<dyn std::error::Error>> {
-    let project = TestProjectBuilder::new()?.create_standard_structure()?.build();
+    let project = TestProjectBuilder::new()?
+        .create_standard_structure()?
+        .build();
 
     // Create a very deep directory structure
     let mut current_path = project.path().to_path_buf();
-    for i in 0..50 { // 50 levels deep
+    for i in 0..50 {
+        // 50 levels deep
         current_path = current_path.join(format!("level_{}", i));
         fs::create_dir_all(&current_path)?;
     }
 
     // Add a file at the deepest level
-    fs::write(current_path.join("deep_file.rs"), "const DEEP_VAR = \"deep_value\";")?;
+    fs::write(
+        current_path.join("deep_file.rs"),
+        "const DEEP_VAR = \"deep_value\";",
+    )?;
 
     let mut cmd = project.env_cli();
     cmd.args(["scan", "--hidden"]);
 
     let result = cmd.assert();
     if !result.get_output().status.success() {
-        result.stderr(predicates::str::contains("deep")
-            .or(predicates::str::contains("path"))
-            .or(predicates::str::contains("recursion")));
+        result.stderr(
+            predicates::str::contains("deep")
+                .or(predicates::str::contains("path"))
+                .or(predicates::str::contains("recursion")),
+        );
     }
 
     Ok(())

@@ -4,28 +4,30 @@
 //! advanced security controls, audit trails, role-based access control, and
 //! compliance reporting capabilities.
 
-use std::collections::HashMap;
-use chrono::{DateTime, Utc};
+#![allow(unused_imports, unused_variables, dead_code)]
+
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use uuid::Uuid;
 
+pub mod audit;
 pub mod auth;
 pub mod collaboration;
+pub mod compliance;
 pub mod config;
 pub mod encryption;
-pub mod rbac;
-pub mod audit;
-pub mod compliance;
 pub mod integrations;
+pub mod rbac;
 
 // Re-export commonly used types
+pub use audit::{AuditEvent, AuditLogger};
 pub use auth::{AuthContext, AuthProvider};
-pub use collaboration::{TeamWorkspace, SharedEnvironment, ConflictResolver};
-pub use encryption::{EncryptionService, EncryptedValue};
-pub use rbac::{Role, Permission, PermissionMatrix};
-pub use audit::{AuditLogger, AuditEvent};
-pub use compliance::{ComplianceReport, ComplianceFramework};
+pub use collaboration::{ConflictResolver, SharedEnvironment, TeamWorkspace};
+pub use compliance::{ComplianceFramework, ComplianceReport};
+pub use encryption::{EncryptedValue, EncryptionService};
 pub use integrations::{SSOProvider, SecretsProvider};
+pub use rbac::{Permission, PermissionMatrix, Role};
 
 /// Enterprise configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -267,7 +269,7 @@ pub enum Action {
 }
 
 /// Effect of a permission
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Effect {
     /// Allow the action
     Allow,
