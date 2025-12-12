@@ -13,7 +13,9 @@ pub mod commands;
 pub mod config;
 pub mod env;
 pub mod error;
+pub mod plugins;
 pub mod scan;
+pub mod sync;
 pub mod utils;
 
 // Re-export commonly used types

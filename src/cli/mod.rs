@@ -73,6 +73,12 @@ pub enum Commands {
         /// Include comments describing each variable
         #[arg(long)]
         comments: bool,
+        /// Generate comprehensive documentation
+        #[arg(long)]
+        docs: bool,
+        /// Directory to scan for environment variables (default: current)
+        #[arg(long, default_value = ".")]
+        scan_dir: std::path::PathBuf,
     },
     /// Show current environment status
     Status {

@@ -25,6 +25,7 @@ thiserror = "1.0"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_yaml = "0.9"
 toml = "0.8"
 
 # Utilities
@@ -33,6 +34,17 @@ glob = "0.3"
 dirs = "5.0"
 rand = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
+
+# Parallel processing for EC-03
+rayon = "1.10"
+
+# File system operations
+walkdir = "2.5"
+ignore = "0.4"
+
+# Advanced string matching
+similar = "2.6"
+diff = "0.1"
 
 # Async runtime
 tokio = { version = "1.42", features = ["full"] }
