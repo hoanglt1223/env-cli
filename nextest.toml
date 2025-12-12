@@ -1,0 +1,103 @@
+# nextest.toml
+# Configuration file for nextest, a next-generation test runner for Rust projects.
+#
+# This file is in TOML format. For more information about the syntax, see:
+# https://github.com/toml-lang/toml
+
+# The default profile used for running tests.
+# The default profile is used when no profile is specified.
+[profile.default]
+
+# The test status reporter to use. Acceptable values:
+# - "black-hole": no output
+# - "verbose": show test status for each test
+# - "compact": show test status for each test, but with less output
+# - "github": show GitHub Actions annotations for failures (default in CI)
+status-level = "short"
+
+# Show test execution statistics at the end of the test run.
+final-status-level = "flaky"
+
+# Show test output that isn't a failure.
+# This setting is deprecated and will be removed in a future release.
+# Use the report node instead.
+success-output = "immediate"
+
+# The number of test threads to use. By default, nextest uses logical CPU count.
+# - "num-cpus": use the number of logical CPUs (default)
+# - <integer>: use the specified number of threads
+test-threads = "num-cpus"
+
+# Show the output of all tests, not just failed tests.
+show-output = "fails-only"
+
+# Whether to stop the test run on the first failure.
+fail-fast = false
+
+# Slow test timeout. Tests that take longer than this will be marked as slow.
+slow-timeout = "60s"
+
+# Leak timeout. Tests that leak memory for longer than this will be marked as failed.
+# This is only supported on platforms that support leak detection.
+leak-timeout = "0s"
+
+# Whether to fail tests on memory leaks.
+# This is only supported on platforms that support leak detection.
+# - "never": never fail tests on memory leaks (default)
+# - "on-pass": fail tests that pass but leak memory
+# - "on-fail": fail tests that fail and leak memory
+# - "always": always fail tests that leak memory
+fail-on = "never"
+
+# A list of patterns to ignore when running tests.
+# This is a list of regular expressions.
+ignore = []
+
+# A list of test binary overrides.
+# This is a table where each key is the name of a test binary and the value is a table of overrides.
+[[profile.default.overrides]]
+filter = "test(::compile)"
+test-threads = 1
+
+# The profile used for continuous integration.
+[profile.ci]
+
+# The test status reporter to use in CI.
+status-level = "fail-only"
+
+# Show test execution statistics at the end of the test run.
+final-status-level = "slow"
+
+# Show the output of all tests in CI.
+show-output = "always"
+
+# Fail fast in CI.
+fail-fast = true
+
+# Use fewer threads in CI to avoid overwhelming the system.
+test-threads = "num-cpus"
+
+# Slow test timeout in CI.
+slow-timeout = "30s"
+
+[profile.ci.junit]
+# Path to the JUnit XML report file.
+report-file = "target/nextest/ci/junit.xml"
+
+# The profile used for benchmarking tests.
+[profile.bench]
+
+# The test status reporter to use for benchmarking.
+status-level = "slow"
+
+# Show test execution statistics at the end of the test run.
+final-status-level = "slow"
+
+# Show the output of all tests for benchmarking.
+show-output = "always"
+
+# Use a single thread for benchmarking.
+test-threads = 1
+
+# Longer timeout for benchmarking tests.
+slow-timeout = "120s"
