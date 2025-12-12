@@ -2,6 +2,8 @@
 //!
 //! This module contains the command-line interface definitions using clap.
 
+pub mod completion;
+
 use clap::Parser;
 
 /// The missing CLI for environment variable management.
@@ -85,6 +87,17 @@ pub enum Commands {
         /// Show detailed information
         #[arg(long)]
         verbose: bool,
+    },
+    /// Generate shell completion scripts
+    Completion {
+        /// Shell type (bash, zsh, fish, powershell)
+        shell: String,
+        /// Install completion to system
+        #[arg(long)]
+        install: bool,
+        /// Uninstall completion from system
+        #[arg(long)]
+        uninstall: bool,
     },
 }
 

@@ -9,6 +9,7 @@ pub mod switch;
 pub mod sync;
 pub mod validate;
 pub mod generate;
+pub mod completion;
 
 use crate::cli::Commands;
 use crate::error::Result;
@@ -23,5 +24,6 @@ pub async fn execute_command(command: Commands) -> Result<()> {
         Commands::Sync { source, target, yes } => sync::execute(source, target, yes).await,
         Commands::Generate { output, comments, docs, scan_dir } => generate::execute(output, comments, docs, Some(scan_dir)).await,
         Commands::Status { verbose } => status::execute(verbose).await,
+        Commands::Completion { shell, install, uninstall } => completion::execute(shell, install, uninstall).await,
     }
 }

@@ -23,6 +23,8 @@ pub enum EnvCliError {
     InvalidFormat(String),
     /// Already initialized error
     AlreadyInitialized(String),
+    /// Invalid argument errors
+    InvalidArgument(String),
     /// IO errors
     Io(std::io::Error),
     /// Serialization errors
@@ -40,6 +42,7 @@ impl fmt::Display for EnvCliError {
             EnvCliError::Validation(msg) => write!(f, "Validation error: {}", msg),
             EnvCliError::InvalidFormat(msg) => write!(f, "Invalid format: {}", msg),
             EnvCliError::AlreadyInitialized(msg) => write!(f, "Already initialized: {}", msg),
+            EnvCliError::InvalidArgument(msg) => write!(f, "Invalid argument: {}", msg),
             EnvCliError::Io(err) => write!(f, "IO error: {}", err),
             EnvCliError::Serialization(msg) => write!(f, "Serialization error: {}", msg),
         }
