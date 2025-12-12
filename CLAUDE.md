@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # env-cli - Project Structure and Architecture
 
 ## Overview
@@ -66,41 +70,48 @@ env-cli/
 
 ### Core Components
 
-1. **CLI Layer** (`src/cli/`):
-   - Uses `clap` for argument parsing
-   - Defines command structure and options
-   - Handles help generation and version info
+1. **CLI Layer** (`src/cli/mod.rs`):
+   - Uses `clap` with derive macros for argument parsing
+   - Defines `Cli` struct and `Commands` enum with subcommands
+   - Supports multiple output formats (text, json, yaml) for scan results
+   - Entry point: `Cli::parse()` in `main.rs:12`
 
 2. **Command Layer** (`src/commands/`):
-   - Business logic for each command
-   - Async execution using `tokio`
-   - Error handling and user feedback
+   - Dispatcher in `mod.rs:execute_command()` routes commands to handlers
+   - Each command in separate file (init.rs, switch.rs, scan.rs, etc.)
+   - All commands are async functions using `tokio`
+   - Returns `Result<()>` for consistent error handling
 
-3. **Configuration Layer** (`src/config/`):
-   - TOML-based configuration files
-   - Environment and scan settings
-   - Validation rules and security policies
+3. **Configuration Layer** (`src/config/mod.rs`):
+   - TOML-based configuration management using serde
+   - Project settings in `.env/config.toml`
+   - Environment definitions and validation rules
+   - Scan patterns and security policies
 
-4. **Environment Layer** (`src/env/`):
-   - Environment variable management
-   - .env file parsing and generation
-   - Usage tracking and analysis
+4. **Environment Layer** (`src/env/mod.rs`):
+   - Environment variable parsing and manipulation
+   - .env file handling with validation
+   - Environment switching logic
+   - Secret generation and management
 
-5. **Scanning Layer** (`src/scan/`):
+5. **Scanning Layer** (`src/scan/mod.rs`):
    - Multi-language source code analysis
-   - Pattern-based env usage detection
-   - Parallel processing for large codebases
+   - Regex-based pattern matching for env usage
+   - Parallel processing capabilities for large codebases
+   - Support for various file types and exclusion patterns
 
-6. **Utilities Layer** (`src/utils/`):
-   - File system operations
-   - Security utilities (secret generation)
-   - Helper functions and common patterns
+6. **Utilities Layer** (`src/utils/mod.rs`):
+   - File system operations and path handling
+   - Security utilities (random secret generation)
+   - Common helper functions and error context
 
-### Error Handling
+### Error Handling Architecture
 
-- Custom error types in `src/error.rs`
-- Contextual error messages using `anyhow`
-- Proper error propagation and user-friendly output
+- Custom error type `EnvCliError` in `src/error.rs` with variants for different domains
+- `Result<T>` type alias for convenience
+- Error context trait `ErrorContext` for better error messages
+- Automatic conversions from `std::io::Error` and serialization errors
+- All error messages are user-friendly and actionable
 
 ### Testing Strategy
 
@@ -111,18 +122,22 @@ env-cli/
 
 ## Development Practices
 
-### Code Quality
+### Code Quality Standards
 
-1. **Formatting**: `rustfmt` with default settings
-2. **Linting**: `clippy` with strict warnings
-3. **Documentation**: Public items have `///` doc comments
-4. **Error handling**: Comprehensive error types and messages
+- **Formatting**: `rustfmt` with default settings (enforced in CI)
+- **Linting**: `clippy` with `-D warnings` (treat warnings as errors)
+- **Documentation**: All public items require `///` doc comments (enforced with `#![deny(missing_docs)]`)
+- **Error handling**: Comprehensive error types with `anyhow` for context
+- **Dependencies**: Minimal, well-vetted dependencies with regular security audits
 
-### Dependencies
+### Toolchain and Dependencies
 
-- Minimal, well-vetted dependencies
-- Regular security audits using `cargo deny`
-- MSRV (Minimum Supported Rust Version) of 1.70.0
+- **Rust 1.70.0+** MSRV defined in `rust-toolchain.toml`
+- **Async runtime**: `tokio` with full features for async operations
+- **CLI parsing**: `clap` 4.5 with derive macros
+- **Serialization**: `serde` + `serde_json` + `toml` for config handling
+- **Security**: `cargo-deny` for dependency vulnerability scanning
+- **Testing**: `cargo-nextest` as primary test runner, `cargo-llvm-cov` for coverage
 
 ### CI/CD Pipeline
 
@@ -184,11 +199,12 @@ sensitive_patterns = [".*KEY.*", ".*SECRET.*"]
 min_secret_length = 16
 ```
 
-### Toolchain Configuration
+### Toolchain Configuration Files
 
-- **Rust 1.70.0+** (MSRV)
-- **rust-toolchain.toml**: Ensures consistent toolchain across environments
+- **rust-toolchain.toml**: Ensures consistent Rust version across environments
 - **nextest.toml**: Optimized test runner configuration
+- **deny.toml**: Security policy for dependency auditing
+- **Makefile**: Comprehensive build automation with all development tasks
 
 ## Security Considerations
 
@@ -204,13 +220,56 @@ min_secret_length = 16
 3. **Efficient Scanning**: Regex patterns optimized for performance
 4. **Memory Management**: Careful handling of large codebases
 
-## Development Workflow
+## Development Workflow and Commands
 
-1. **Setup**: `make setup` - Install development dependencies
-2. **Development**: `make build` - Build the project
-3. **Testing**: `make test` - Run all tests
-4. **Quality Checks**: `make check` - Run formatting, linting, and security checks
-5. **Release**: `make release` - Build release binaries
+### Essential Commands
+
+**Setup and Building:**
+- `make setup` - Install development dependencies (rustfmt, clippy, cargo-nextest, etc.)
+- `make build` - Build the project in debug mode
+- `make build-release` - Build optimized release binaries
+
+**Testing:**
+- `make test` - Run tests using cargo-nextest (optimized test runner)
+- `make test-coverage` - Run tests with coverage report (cargo llvm-cov)
+- `cargo test <test_name>` - Run a specific test
+- `make test-all` - Run tests + linting + formatting checks
+
+**Code Quality:**
+- `make check` - Run formatting check, clippy linting, and security audit
+- `make check-format` - Check code formatting without modifying files
+- `make format` - Format code with rustfmt
+- `make lint` - Run clippy lints with strict warnings
+- `make audit` - Run security audit with cargo-deny
+
+**Development Workflow:**
+- `make ci` - Run all CI checks (formatting, linting, tests, security audit)
+- `make clean` - Clean build artifacts and documentation
+- `make install` - Build and install the binary locally
+- `make docs` - Generate documentation
+- `make docs-open` - Generate and open documentation in browser
+
+**Release:**
+- `make release` - Build release binaries for all target platforms
+- `make release-patch` - Create a patch release with version bump and git tag
+
+### Testing Individual Components
+
+Run tests for specific modules:
+```bash
+cargo test -p env-cli cli::tests        # Test CLI parsing
+cargo test -p env-cli commands::tests   # Test command logic
+cargo test -p env-cli config::tests     # Test configuration
+cargo test -p env-cli scan::tests       # Test scanning functionality
+```
+
+### Development Notes
+
+- Uses `cargo-nextest` as the primary test runner (faster and better UX than cargo test)
+- Security auditing is enforced via `cargo-deny` with policy in `deny.toml`
+- Pre-commit hooks can be installed with `make pre-commit` to run quality checks automatically
+- The binary name is `env` (defined in Cargo.toml), not `env-cli`
+- All commands are async and must be `.await`ed in tests
 
 ## Future Enhancements
 
