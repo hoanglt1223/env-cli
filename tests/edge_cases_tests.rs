@@ -3,12 +3,15 @@
 //! This module contains tests for edge cases, error conditions,
 //! and boundary scenarios to ensure robustness.
 
-use crate::common::TestProjectBuilder;
+#![allow(deprecated)]
+#![allow(unused_imports)]
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
-use std::path::Path;
 use tempfile::TempDir;
+
+mod common;
+use common::TestProjectBuilder;
 
 // ============================================================================
 // Invalid Input Tests
@@ -19,7 +22,8 @@ fn test_empty_environment_names() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
+    
     let mut cmd = project.env_cli();
 
     cmd.args(["switch", ""]);
@@ -38,7 +42,7 @@ fn test_special_characters_in_environment_names() -> Result<(), Box<dyn std::err
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     let invalid_names = vec![
         "env-with spaces",
@@ -72,7 +76,7 @@ fn test_very_long_environment_names() -> Result<(), Box<dyn std::error::Error>> 
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Create a very long environment name (1000 characters)
     let long_name = "a".repeat(1000);
@@ -94,7 +98,7 @@ fn test_unicode_environment_names() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     let unicode_names = vec![
         "环境",          // Chinese
@@ -147,7 +151,7 @@ fn test_permission_denied_scenarios() -> Result<(), Box<dyn std::error::Error>> 
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Create a read-only directory (if possible on the system)
     let readonly_dir = project.path().join("readonly");
@@ -186,7 +190,7 @@ fn test_disk_space_exhaustion_simulation() -> Result<(), Box<dyn std::error::Err
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Create a very large file to simulate disk space issues (limited size for test)
     let large_file = project.path().join("large_file.txt");
@@ -208,7 +212,7 @@ fn test_disk_space_exhaustion_simulation() -> Result<(), Box<dyn std::error::Err
 fn test_malformed_config_files() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
-        .build();
+        .build()?;
 
     // Create malformed config.toml
     let malformed_config = r#"[project
@@ -239,7 +243,7 @@ fn test_corrupted_environment_files() -> Result<(), Box<dyn std::error::Error>> 
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Create corrupted .env file with invalid encoding
     let corrupted_content = vec![0xFF, 0xFE, 0xFD, 0xFC]; // Invalid UTF-8
@@ -267,7 +271,7 @@ fn test_offline_mode() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Test that basic commands work in offline mode
     let mut cmd = project.env_cli();
@@ -284,7 +288,7 @@ fn test_offline_mode() -> Result<(), Box<dyn std::error::Error>> {
 fn test_timeout_scenarios() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
-        .build();
+        .build()?;
 
     // Create a very deep directory structure to potentially cause timeouts
     let mut current_path = project.path().to_path_buf();
@@ -322,7 +326,7 @@ fn test_concurrent_file_access() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Simulate concurrent access by creating lock files
     let lock_file = project.path().join(".env.lock");
@@ -367,7 +371,7 @@ fn test_large_environment_variable_values() -> Result<(), Box<dyn std::error::Er
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Create environment file with very large values
     let large_value = "x".repeat(1_000_000); // 1MB
@@ -394,7 +398,7 @@ DATABASE_URL=postgresql://localhost:5432/test_db
 fn test_many_environment_variables() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
-        .build();
+        .build()?;
 
     // Create .env file with many variables
     let mut env_content = String::new();
@@ -424,7 +428,7 @@ fn test_special_characters_in_values() -> Result<(), Box<dyn std::error::Error>>
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Test various special characters in environment variable values
     let special_values = vec![
@@ -472,17 +476,15 @@ fn test_windows_path_handling() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Test Windows-style paths in environment variables
+    let long_path = format!("{}\\{}", "C:\\", "a".repeat(100));
     let windows_paths = vec![
         ("WINDOWS_PATH", "C:\\Program Files\\MyApp\\config"),
         ("UNC_PATH", "\\\\server\\share\\folder"),
         ("MIXED_PATH", "C:/mixed/slash/style/path"),
-        (
-            "LONG_PATH",
-            &format!("{}\\{}", "C:\\".to_string(), "a".repeat(100)),
-        ),
+        ("LONG_PATH", long_path.as_str()),
     ];
 
     let mut env_content = String::new();
@@ -509,7 +511,7 @@ fn test_unix_path_handling() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
         .create_config_files()?
-        .build();
+        .build()?;
 
     // Test Unix-style paths in environment variables
     let unix_paths = vec![
@@ -548,7 +550,7 @@ fn test_unix_path_handling() -> Result<(), Box<dyn std::error::Error>> {
 fn test_max_file_descriptors() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
-        .build();
+        .build()?;
 
     // Create many small files to potentially exhaust file descriptors
     for i in 0..1000 {
@@ -570,7 +572,7 @@ fn test_max_file_descriptors() -> Result<(), Box<dyn std::error::Error>> {
 fn test_extremely_deep_directory_structure() -> Result<(), Box<dyn std::error::Error>> {
     let project = TestProjectBuilder::new()?
         .create_standard_structure()?
-        .build();
+        .build()?;
 
     // Create a very deep directory structure
     let mut current_path = project.path().to_path_buf();

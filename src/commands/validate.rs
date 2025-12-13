@@ -190,7 +190,6 @@ fn get_current_environment() -> Result<String> {
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs;
         let target = std::fs::read_link(&current_path)?;
 
         // Extract environment name from path like "environments/development.env"

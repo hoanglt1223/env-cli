@@ -3,6 +3,10 @@
 //! This module contains comprehensive end-to-end tests for all CLI commands.
 //! Tests use temporary directories to ensure isolation and proper cleanup.
 
+#![allow(deprecated)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;

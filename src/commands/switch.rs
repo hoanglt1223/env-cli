@@ -192,7 +192,6 @@ fn get_current_environment() -> Result<String> {
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs;
         let target = std::fs::read_link(&current_path)?;
 
         // Extract environment name from path like "environments/development.env"
@@ -246,7 +245,6 @@ fn create_backup(env_name: &str, env_dir: &PathBuf) -> Result<()> {
     // Copy current environment file to backup location
     #[cfg(unix)]
     {
-        use std::os::unix::fs;
         let target_path = std::fs::read_link(&current_path)?;
         let absolute_target = env_dir.join(target_path);
         std::fs::copy(&absolute_target, &backup_path)?;

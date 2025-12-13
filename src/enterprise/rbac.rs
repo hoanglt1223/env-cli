@@ -566,6 +566,7 @@ impl Default for RbacEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     #[test]
     fn test_role_hierarchy() {

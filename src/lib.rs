@@ -28,6 +28,11 @@
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::unwrap_or_default)]
+// Temporarily allow deprecated warnings in tests
+#![cfg_attr(test, allow(deprecated))]
+#![cfg_attr(test, allow(unused_imports))]
+#![cfg_attr(test, allow(unused_variables))]
+#![cfg_attr(test, allow(unused_mut))]
 
 pub mod cli;
 pub mod commands;

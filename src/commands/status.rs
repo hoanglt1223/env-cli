@@ -221,7 +221,6 @@ fn get_current_environment() -> Result<String> {
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs;
         let target = read_link(&current_path)?;
 
         if let Some(file_name) = target

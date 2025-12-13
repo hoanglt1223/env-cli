@@ -3,10 +3,12 @@
 //! This module contains tests for advanced features like enterprise commands,
 //! workspace management, and complex scenarios.
 
+#![allow(deprecated)]
+#![allow(unused_imports)]
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
-use std::path::Path;
 use tempfile::TempDir;
 
 /// Helper function to create a team workspace setup
@@ -629,13 +631,13 @@ DEBUG=true
 
     // Initialize large workspace
     let mut cmd = Command::cargo_bin("env")?;
-    cmd.current_dir(workspace_dir.path());
+    cmd.current_dir(workspace_dir);
     cmd.args(["workspace", "init"]);
     cmd.assert().success();
 
     // Test workspace status performance
     let mut cmd = Command::cargo_bin("env")?;
-    cmd.current_dir(workspace_dir.path());
+    cmd.current_dir(workspace_dir);
     cmd.args(["workspace", "status"]);
 
     cmd.assert()
@@ -658,7 +660,7 @@ fn test_concurrent_operations() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..5 {
         let project_name = format!("service_{}", i);
         let project_path = format!("services/{}", project_name);
-        fs::create_dir_all(workspace_dir.join(&project_path)).unwrap();
+        fs::create_dir_all(workspace_dir.path().join(&project_path)).unwrap();
 
         let mut cmd = Command::cargo_bin("env")?;
         cmd.current_dir(workspace_dir.path());

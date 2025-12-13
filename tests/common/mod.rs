@@ -1,10 +1,24 @@
 //! Common utilities and helpers for integration tests
 
+#![allow(deprecated)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(dead_code)]
+
 use assert_cmd::Command as AssertCommand;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use tempfile::TempDir;
+
+/// Helper function to capitalize a string
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
 
 /// Test configuration structure
 #[derive(Debug, Clone)]
@@ -53,7 +67,7 @@ impl TestProjectBuilder {
     }
 
     /// Create standard project structure
-    pub fn create_standard_structure(mut self) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn create_standard_structure(self) -> Result<Self, Box<dyn std::error::Error>> {
         let project_dir = self.temp_dir.path();
 
         // Create basic directories
@@ -180,7 +194,7 @@ mod tests {
     }
 
     /// Create frontend files for testing cross-language support
-    pub fn create_frontend_files(mut self) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn create_frontend_files(self) -> Result<Self, Box<dyn std::error::Error>> {
         let project_dir = self.temp_dir.path();
 
         fs::create_dir_all(project_dir.join("frontend/src"))?;
@@ -298,7 +312,7 @@ TOKEN_EXPIRY=3600
 DEBUG={}
 CORS_ORIGIN=http://localhost:3000
 "#,
-                env.capitalize(),
+                capitalize(env),
                 env,
                 self.config.project_name,
                 env,
@@ -340,7 +354,7 @@ file = ".env/{}.env"
 
 "#,
                 env,
-                env.capitalize(),
+                capitalize(env),
                 env
             ));
         }
@@ -373,7 +387,7 @@ min_secret_length = 16
     }
 
     /// Create CI/CD configuration files
-    pub fn create_cicd_files(mut self) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn create_cicd_files(self) -> Result<Self, Box<dyn std::error::Error>> {
         let project_dir = self.temp_dir.path();
 
         fs::create_dir_all(project_dir.join(".github/workflows"))?;
@@ -485,10 +499,11 @@ impl TestProject {
         relative_path: impl AsRef<Path>,
         content: &str,
     ) -> Result<(), std::io::Error> {
-        if let Some(parent) = self.file_path(relative_path).parent() {
+        let file_path = self.file_path(&relative_path);
+        if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        fs::write(self.file_path(relative_path), content)
+        fs::write(file_path, content)
     }
 
     /// Get the project configuration
