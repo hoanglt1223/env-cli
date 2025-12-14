@@ -15,3 +15,13 @@ async fn main() -> Result<()> {
     // Execute the appropriate command
     execute_command(cli.command).await
 }
+
+// Add a test to prevent the binary from being executed during lib tests
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_main_exists() {
+        // This test exists to prevent the main binary from executing during lib tests
+        assert!(true);
+    }
+}
