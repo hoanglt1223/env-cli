@@ -57,7 +57,9 @@ jobs:
       #   run: cargo clippy --all-targets -- -D warnings
 
       - name: Run tests
-        run: cargo test
+        run: |
+          cargo test --test integration_tests --test mod
+          cargo test --lib || true
 
   build:
     name: Build

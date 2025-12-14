@@ -13,6 +13,7 @@ categories = ["command-line-utilities", "development-tools"]
 [[bin]]
 name = "env"
 path = "src/main.rs"
+test = false
 
 [lib]
 name = "env_cli"

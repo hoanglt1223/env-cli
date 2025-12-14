@@ -2,11 +2,16 @@
 //!
 //! This is the main entry point for the env-cli application.
 
+#[cfg(not(test))]
 use clap::Parser;
+#[cfg(not(test))]
 use env_cli::cli::Cli;
+#[cfg(not(test))]
 use env_cli::commands::execute_command;
+#[cfg(not(test))]
 use env_cli::error::Result;
 
+#[cfg(not(test))]
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse command line arguments
@@ -16,12 +21,8 @@ async fn main() -> Result<()> {
     execute_command(cli.command).await
 }
 
-// Add a test to prevent the binary from being executed during lib tests
+// Stub main for test mode to prevent binary execution
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn test_main_exists() {
-        // This test exists to prevent the main binary from executing during lib tests
-        assert!(true);
-    }
+fn main() {
+    // No-op in test mode
 }
