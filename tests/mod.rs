@@ -1,11 +1,9 @@
 //! Integration tests for env-cli
 //!
-//! This module contains comprehensive end-to-end tests for all CLI commands
-//! and functionality of the env-cli tool.
+//! This module contains happy path tests for all CLI commands.
 
 pub mod common;
 
-mod advanced_integration_tests;
 mod integration_tests;
 
 // Re-export commonly used test utilities for convenience

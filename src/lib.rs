@@ -44,8 +44,5 @@ pub mod scan;
 pub mod sync;
 pub mod utils;
 
-// Enterprise modules for EC-05
-pub mod enterprise;
-
 // Re-export commonly used types
 pub use error::{EnvCliError, Result};

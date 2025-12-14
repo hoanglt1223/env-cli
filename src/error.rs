@@ -29,20 +29,6 @@ pub enum EnvCliError {
     Io(std::io::Error),
     /// Serialization errors
     Serialization(String),
-    /// Authentication errors
-    AuthenticationError(String),
-    /// Collaboration errors
-    CollaborationError(String),
-    /// Config errors (enterprise)
-    ConfigError(String),
-    /// Encryption errors
-    EncryptionError(String),
-    /// RBAC errors
-    RbacError(String),
-    /// Audit errors
-    AuditError(String),
-    /// Compliance errors
-    ComplianceError(String),
 }
 
 impl fmt::Display for EnvCliError {
@@ -59,13 +45,6 @@ impl fmt::Display for EnvCliError {
             EnvCliError::InvalidArgument(msg) => write!(f, "Invalid argument: {}", msg),
             EnvCliError::Io(err) => write!(f, "IO error: {}", err),
             EnvCliError::Serialization(msg) => write!(f, "Serialization error: {}", msg),
-            EnvCliError::AuthenticationError(msg) => write!(f, "Authentication error: {}", msg),
-            EnvCliError::CollaborationError(msg) => write!(f, "Collaboration error: {}", msg),
-            EnvCliError::ConfigError(msg) => write!(f, "Config error: {}", msg),
-            EnvCliError::EncryptionError(msg) => write!(f, "Encryption error: {}", msg),
-            EnvCliError::RbacError(msg) => write!(f, "RBAC error: {}", msg),
-            EnvCliError::AuditError(msg) => write!(f, "Audit error: {}", msg),
-            EnvCliError::ComplianceError(msg) => write!(f, "Compliance error: {}", msg),
         }
     }
 }
@@ -117,30 +96,6 @@ impl From<std::time::SystemTimeError> for EnvCliError {
 impl From<anyhow::Error> for EnvCliError {
     fn from(err: anyhow::Error) -> Self {
         EnvCliError::Serialization(err.to_string())
-    }
-}
-
-impl From<uuid::Error> for EnvCliError {
-    fn from(err: uuid::Error) -> Self {
-        EnvCliError::InvalidArgument(format!("UUID error: {}", err))
-    }
-}
-
-impl From<bcrypt::BcryptError> for EnvCliError {
-    fn from(err: bcrypt::BcryptError) -> Self {
-        EnvCliError::AuthenticationError(format!("Bcrypt error: {}", err))
-    }
-}
-
-impl From<jsonwebtoken::errors::Error> for EnvCliError {
-    fn from(err: jsonwebtoken::errors::Error) -> Self {
-        EnvCliError::AuthenticationError(format!("JWT error: {}", err))
-    }
-}
-
-impl From<sha2::digest::InvalidLength> for EnvCliError {
-    fn from(err: sha2::digest::InvalidLength) -> Self {
-        EnvCliError::EncryptionError(format!("Invalid key length: {}", err))
     }
 }
 

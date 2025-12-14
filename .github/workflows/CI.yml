@@ -57,7 +57,7 @@ jobs:
       #   run: cargo clippy --all-targets -- -D warnings
 
       - name: Run tests
-        run: cargo test --quiet
+        run: cargo test
 
   build:
     name: Build
@@ -100,9 +100,9 @@ jobs:
       - name: Build ${{ matrix.build_mode }} binary
         run: |
           if [ "${{ matrix.build_mode }}" = "release" ]; then
-            cargo build --release --quiet
+            cargo build --release
           else
-            cargo build --quiet
+            cargo build
           fi
 
       - name: Upload artifact

@@ -725,7 +725,7 @@ pub fn uninstall_completion(shell: Shell) -> Result<()> {
 /// Get the completion directory for the specified shell.
 fn get_completion_dir(shell: Shell) -> Result<std::path::PathBuf> {
     let home_dir = dirs::home_dir().ok_or_else(|| {
-        crate::error::EnvCliError::ConfigError("Could not find home directory".to_string())
+        crate::error::EnvCliError::Config("Could not find home directory".to_string())
     })?;
 
     let completion_dir = match shell {

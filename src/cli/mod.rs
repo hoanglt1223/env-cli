@@ -99,16 +99,6 @@ pub enum Commands {
         #[arg(long)]
         uninstall: bool,
     },
-    /// Enterprise features and team collaboration
-    Enterprise {
-        #[command(flatten)]
-        command: crate::commands::enterprise::EnterpriseCommand,
-    },
-    /// Workspace management for team collaboration
-    Workspace {
-        #[command(flatten)]
-        command: crate::commands::workspace::WorkspaceCommand,
-    },
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
