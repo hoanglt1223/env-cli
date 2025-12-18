@@ -2,13 +2,23 @@
 name = "env-cli"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
-description = "The missing CLI for environment variable management"
+rust-version = "1.70.0"
+authors = ["env-cli contributors"]
+description = "The missing CLI for environment variable management - A powerful tool for managing environment variables across development, staging, and production"
+readme = "README.md"
 license = "MIT"
-repository = "https://github.com/your-org/env-cli"
-homepage = "https://github.com/your-org/env-cli"
+repository = "https://github.com/env-cli/env-cli"
+homepage = "https://github.com/env-cli/env-cli"
+documentation = "https://docs.rs/env-cli"
 keywords = ["environment", "env", "cli", "dotenv", "configuration"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = [
+    ".github/",
+    "docs/tasks/",
+    "target/",
+    "*.log",
+    ".env*",
+]
 
 [[bin]]
 name = "env"

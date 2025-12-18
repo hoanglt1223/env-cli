@@ -7,7 +7,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 **env-cli** is a professional Rust CLI tool for environment variable management, built following best practices from successful Rust CLI projects like fnm. This document outlines the project structure, architecture, and development practices.
-Use docs/vibe-kanban-api.md to self create task, start task in concurrent
 
 ## Project Structure
 
@@ -303,5 +302,3 @@ This project draws inspiration from successful Rust CLI tools:
 - **exa**: Modern CLI design principles
 
 The project follows the [Rust CLI Guidelines](https://rust-cli.github.io/book/) and incorporates best practices from the broader Rust ecosystem.
-
-Vibe-kanban

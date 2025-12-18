@@ -3,20 +3,16 @@
 //! This module provides comprehensive shell completion support for env-cli,
 //! including bash, zsh, fish, and PowerShell completion scripts.
 
-use crate::cli::Cli;
 use crate::error::Result;
-use clap::Parser;
 use std::fmt::Write;
 
 /// Shell completion generator.
-pub struct CompletionGenerator {
-    _cli: Cli,
-}
+pub struct CompletionGenerator {}
 
 impl CompletionGenerator {
     /// Create a new completion generator.
     pub fn new() -> Self {
-        Self { _cli: Cli::parse() }
+        Self {}
     }
 
     /// Generate completion script for the specified shell.
